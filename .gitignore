@@ -1,0 +1,6 @@
+.DS_Store
+releases
+designs
+*.love
+.aider*
+.claude/settings.local.json

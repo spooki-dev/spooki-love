@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 5 /Applications/love.app/Contents/MacOS/love .)"
+    ]
+  }
+}
