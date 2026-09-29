@@ -67,11 +67,13 @@ function hotReload.reload(changedFiles)
     print("  - " .. file)
   end
 
-  -- Clear package.loaded to force Lua to reload modules
+  -- Clear package.loaded to force Lua to reload modules.
+  -- The MCP bridge is kept so its open server socket and clients survive
+  -- the reload; Game:load() re-registers its object getter.
   for k, _ in pairs(package.loaded) do
-    if k ~= "hot_reload" and k ~= "love.filesystem" and
-        k ~= "love.timer" and k ~= "love.graphics" and
-        k ~= "love.event" and k ~= "love.run" then
+    if k ~= "hot_reload" and k ~= "engine.dev.mcp_bridge" and
+        k ~= "love.filesystem" and k ~= "love.timer" and
+        k ~= "love.graphics" and k ~= "love.event" and k ~= "love.run" then
       package.loaded[k] = nil
     end
   end
