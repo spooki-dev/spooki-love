@@ -42,3 +42,8 @@ This document outlines the key features of our application.
   ```
 
   The `audioManager` can programmatically create sounds and play them. It supports both sound effects and background music, allowing for flexible audio management in the game.
+
+## Feature 5: Asset Export
+
+- **Description**: Scenes can be rendered offscreen at exact pixel sizes and written as PNGs. Used for icons, covers and logos so marketing art follows the game's fonts and colours.
+- **Usage**: Add an `assets` block to the `Game` config with `{ name, scene, width, height, postProcess?, transparent? }` items, where `scene` is a Scene constructor taking `(width, height)`. Run `love . --export-assets`.

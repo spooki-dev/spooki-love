@@ -40,11 +40,11 @@ function Menu:load()
         UIText("MenuTitle", "NEW GAME", {
           font = "header",
           textAlign = "center",
-          color = Vector4(1, 1, 0, 1),
+          color = colors.vec4Yellow,
         }),
         UIText("MenuSubtitle", "Built with spooki-love", {
           textAlign = "center",
-          color = Vector4(0.7, 0.7, 0.7, 1),
+          color = colors.vec4Grey,
         }),
         UIBox("MenuButtonRow", {
           UIBox("MenuButtonContainer", {

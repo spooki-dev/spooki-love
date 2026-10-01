@@ -12,6 +12,13 @@ function sceneManager.addScene(sceneFunc)
   end
 end
 
+--- Get the constructor a scene was registered with
+--- @param name string Scene name
+--- @return function|nil
+function sceneManager.getSceneConstructor(name)
+  return sceneFunctions[name]
+end
+
 function sceneManager.getCurrentScene()
   return currentScene
 end

@@ -4,3 +4,4 @@ designs
 *.love
 .aider*
 .claude/settings.local.json
+scripts/node_modules/

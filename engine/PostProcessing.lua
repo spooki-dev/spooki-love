@@ -55,20 +55,13 @@ function PostProcessing:endCapture()
   love.graphics.setCanvas()
 end
 
---- Applies all enabled shaders in sequence, then draws the result to screen.
-function PostProcessing:apply()
-  if not self.canvas then return end
-
-  if not self.enabled or #self.shaders == 0 then
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(self.canvas, 0, 0)
-    return
-  end
-
-  local source = self.canvas
-  local dest = self.swapCanvas
+--- Runs every enabled shader over a canvas pair and returns the canvas holding the result.
+---@param self PostProcessing
+---@param source love.Canvas Canvas containing the captured frame
+---@param dest love.Canvas Scratch canvas of the same size
+---@return love.Canvas
+local function runChain(self, source, dest)
   local w, h = source:getDimensions()
-
   for _, shaderDef in ipairs(self.shaders) do
     if shaderDef.enabled ~= false then
       love.graphics.setCanvas(dest)
@@ -82,9 +75,48 @@ function PostProcessing:apply()
       source, dest = dest, source
     end
   end
+  return source
+end
 
+--- Applies all enabled shaders in sequence, then draws the result to screen.
+function PostProcessing:apply()
+  if not self.canvas then return end
+
+  if not self.enabled or #self.shaders == 0 then
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(self.canvas, 0, 0)
+    return
+  end
+
+  local result = runChain(self, self.canvas, self.swapCanvas)
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.draw(result, 0, 0)
+end
+
+--- Runs the shader chain over an arbitrary canvas without touching the screen
+--- canvases. Uniforms are rebuilt from the scene the same way Game:update does.
+---@param source love.Canvas The rendered frame to process (any size)
+---@param scene Scene|nil Scene whose updateShaderUniforms hook supplies uniforms
+---@return love.Canvas A new canvas holding the processed image
+function PostProcessing:process(source, scene)
+  for key in pairs(self.uniforms) do
+    self.uniforms[key] = nil
+  end
+  if scene and scene.updateShaderUniforms then
+    scene:updateShaderUniforms(self.uniforms, 0)
+  end
+  local w, h = source:getDimensions()
+  local a = love.graphics.newCanvas(w, h)
+  local b = love.graphics.newCanvas(w, h)
+  love.graphics.push("all")
+  love.graphics.setCanvas(a)
+  love.graphics.clear(0, 0, 0, 0)
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.draw(source, 0, 0)
+  love.graphics.setCanvas()
+  local result = runChain(self, a, b)
+  love.graphics.pop()
+  return result
 end
 
 --- Updates elapsed time for shader animations.

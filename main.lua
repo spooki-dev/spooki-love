@@ -5,6 +5,14 @@ local Preload = require "scenes.Preload"
 local Menu = require "scenes.Menu"
 local GameScene = require "scenes.Game"
 
+-- Marketing asset scenes, rendered by `love . --export-assets` (never registered as game scenes).
+local AssetIcon = require "scenes.assets.Icon"
+local AssetFavicon = require "scenes.assets.Favicon"
+local AssetCover = require "scenes.assets.Cover"
+local AssetSocial = require "scenes.assets.Social"
+local AssetWide = require "scenes.assets.Wide"
+local AssetLogo = require "scenes.assets.Logo"
+
 -- Flush prints immediately so logs are readable when stdout is piped.
 io.stdout:setvbuf("no")
 
@@ -25,4 +33,16 @@ Game({
   },
   shaders = { CRT },
   watch = { "engine", "scenes", "gameObjects", "constants", "state" },
+  -- Exported to assets/generated/<name>.png; scripts/release.sh bakes icon/favicon into the builds.
+  assets = {
+    outputDir = "assets/generated",
+    items = {
+      { name = "icon",    scene = AssetIcon,    width = 1024, height = 1024 },
+      { name = "favicon", scene = AssetFavicon, width = 64,   height = 64 },
+      { name = "cover",   scene = AssetCover,   width = 630,  height = 500,  postProcess = true },
+      { name = "social",  scene = AssetSocial,  width = 1200, height = 630,  postProcess = true },
+      { name = "wide",    scene = AssetWide,    width = 1920, height = 1080, postProcess = true },
+      { name = "logo",    scene = AssetLogo,    width = 1600, height = 400,  transparent = true },
+    },
+  },
 })

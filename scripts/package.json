@@ -1,0 +1,11 @@
+{
+  "name": "release-tools",
+  "private": true,
+  "type": "module",
+  "description": "Node helpers used by scripts/release.sh (Windows exe icon patching).",
+  "dependencies": {
+    "pe-library": "^1.0.1",
+    "png-to-ico": "^2.1.8",
+    "resedit": "^2.0.3"
+  }
+}

@@ -19,6 +19,7 @@ There is no lint or test command. Verify by running the game; saved edits under 
 - GameObject handlers auto-register for dispatch: define `onClick`, `onMouseOver/onMouseEntered/onMouseExit`, `handleScroll`, `onKeyPressed`, `getHitbox/getHurtbox`. Names must be unique per scene.
 - A scene may define `updateShaderUniforms(uniforms, dt)`; the engine clears `postProcessing.uniforms` every frame and calls it. The CRT shader reads `signalStrength` (1 = clean).
 - Assets/fonts must be preloaded through `engine/cacheManager` (see `scenes/Preload.lua`) before use. Font keys `header`, `subheader`, `body`, `small` and cursor keys `default`, `active` are contracts relied on by `engine/ui`.
+- Marketing art in `assets/generated/` is rendered by `love . --export-assets` from `scenes/assets/*.lua` (engine side: `engine/AssetExporter.lua`); `scripts/release.sh` runs that, builds every platform and pushes to itch with butler. Do not hand-edit the generated PNGs.
 - `constants/colors.lua` exports decimal `{r,g,b}` tables (`black`, `dark`, `light`, `white`, `green`) plus `vec4*` variants; UI code passes `Vector4(r,g,b,a)`.
 
 ## UI system (engine/ui: UIBox, UICanvas, UIStack, UIText, UIBar, BarFill, Button)

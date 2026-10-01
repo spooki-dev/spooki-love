@@ -7,12 +7,12 @@ local UICanvas = GameObject.extend(GameObject)
 
 ---@param name string The name of the UICanvas
 ---@param children table|nil The child game objects of the UICanvas
----@param styles table|nil The styles for the UICanvas
+---@param styles table|nil The styles for the UICanvas. Optional `width`/`height` fix the canvas size; otherwise the window size is used.
 ---@return UICanvas
 function UICanvas:new(name, children, styles)
   local pos = Vector2(0, 0)
-  local width = love.graphics.getWidth()
-  local height = love.graphics.getHeight()
+  local width = styles and styles.width or love.graphics.getWidth()
+  local height = styles and styles.height or love.graphics.getHeight()
   UICanvas.super.new(self, name, pos, width, height)
   self.layer = 'ui'
   self.children = children or {}

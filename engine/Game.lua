@@ -9,6 +9,7 @@ local system = require "engine.utils.system"
 local cursorManager = require "engine.cursorManager"
 local InputManager = require "engine.InputManager"
 local PostProcessing = require "engine.PostProcessing"
+local AssetExporter = require "engine.AssetExporter"
 
 local DEFAULT_WATCH_DIRS = { "engine", "scenes", "gameObjects", "constants" }
 
@@ -25,6 +26,7 @@ local DEFAULT_WATCH_DIRS = { "engine", "scenes", "gameObjects", "constants" }
 ---@field cursors table<string, CursorConfig>|nil Named cursors. Key "default" is applied at startup if present.
 ---@field shaders table|nil Array of post-processing shader definitions, applied in order
 ---@field watch table|nil Directories watched by hot reload in dev (defaults to engine, scenes, gameObjects, constants)
+---@field assets AssetConfig|nil Marketing assets rendered by `love . --export-assets` (see engine/AssetExporter.lua)
 
 ---@class Game : Object
 ---@field title string name of the game
@@ -34,6 +36,8 @@ local DEFAULT_WATCH_DIRS = { "engine", "scenes", "gameObjects", "constants" }
 ---@field cursors table<string, CursorConfig>
 ---@field shaders table
 ---@field watch table
+---@field assets AssetConfig|nil
+---@field args table Command-line arguments passed to love.load
 ---@field sceneManager table The scene manager
 ---@field audioManager table the audio manager
 ---@field cursorManager table cursor manager
@@ -53,6 +57,8 @@ function Game:new(config)
   self.cursors = config.cursors or {}
   self.shaders = config.shaders or {}
   self.watch = config.watch or DEFAULT_WATCH_DIRS
+  self.assets = config.assets
+  self.args = {}
   self.sceneManager = sceneManager
   self.audioManager = audioManager
   self.cursorManager = cursorManager
@@ -65,9 +71,8 @@ function Game:new(config)
 end
 
 function Game:initializeEvents()
-  function love.load()
-    print('self.load')
-    self:load()
+  function love.load(args)
+    self:load(args)
   end
 
   function love.update(dt)
@@ -111,8 +116,19 @@ function Game:initializeEvents()
   end
 end
 
-function Game:load()
-  print("game.load")
+--- Whether a flag was passed on the command line, e.g. `love . --export-assets`.
+---@param flag string
+---@return boolean
+function Game:hasArg(flag)
+  for _, a in ipairs(self.args) do
+    if a == flag then return true end
+  end
+  return false
+end
+
+---@param args table|nil Arguments from love.load
+function Game:load(args)
+  self.args = args or {}
   if not system.isWeb() then
     -- Restore window position and display if saved
     local pos = love.filesystem.read("windowpos.txt")
@@ -163,6 +179,16 @@ function Game:load()
   self.postProcessing:load()
   for _, shaderDef in ipairs(self.shaders) do
     self.postProcessing:addShader(shaderDef)
+  end
+
+  -- Asset export runs before any dev tooling so it never binds the MCP port
+  -- or starts hot reload, then quits without drawing a frame.
+  if self:hasArg("--export-assets") then
+    assert(self.assets, "--export-assets passed but no `assets` config was given to Game")
+    local outputDir = love.filesystem.getSource() .. "/" .. (self.assets.outputDir or "assets/generated")
+    AssetExporter.export(self.assets, outputDir, self.postProcessing)
+    love.event.quit()
+    return
   end
 
   if self.env == "dev" then

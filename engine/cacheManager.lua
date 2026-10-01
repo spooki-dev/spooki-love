@@ -109,13 +109,25 @@ function cacheManager.preloadMusic(key, path)
   end
 end
 
-function cacheManager.preloadFont(key, path, size)
+--- Preloads a font under a key
+--- @param key string Cache key
+--- @param path string Path to the font file
+--- @param size number Point size
+--- @param hinting love.HintingMode|nil Optional hinting mode ("normal", "light", "mono", "none")
+function cacheManager.preloadFont(key, path, size, hinting)
   if not fonts[key] then
-    local font = love.graphics.newFont(path, size)
+    local font = love.graphics.newFont(path, size, hinting)
     fonts[key] = font
   else
     error("Font already preloaded: " .. key)
   end
+end
+
+--- Whether a font is cached under a key
+--- @param key string Cache key
+--- @return boolean
+function cacheManager.hasFont(key)
+  return fonts[key] ~= nil
 end
 
 function cacheManager.getFont(key)
