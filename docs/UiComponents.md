@@ -20,10 +20,17 @@ The primitives live in `engine/ui/` and are required as `require "engine.ui.UIBo
    - UI components like `Button`, `UIText`, etc., are added as children to `UIStack` or `UICanvas`.
    - Each UI component can have its own styles and properties.
 
+4. **InputPrompt:**
+   - `InputPrompt(name, action | { actions }, label, styles)` draws what an action is bound to on the device the player is using, as glyphs from the prompt sheet followed by the label. Four directional actions bound to one stick or d-pad collapse to a single glyph. Styles: `scale`, `font`, `color`, `showAll`, `device`.
+
+5. **FocusGroup and focusable Buttons:**
+   - `FocusGroup({ columns = n })` holds objects with `focus()/blur()/activate()` (`Button` has them) and moves focus with the `ui_*` actions from the scene's `update(dt)`. Mouse hover also moves focus. Give the group `columns` for grids.
+
 ## Contracts
 
 - Fonts are looked up by key: `body` (UIText default), `small` (Button, UIBar), `header`, `subheader`. Preload them (see `scenes/Preload.lua`).
-- `Button` switches the cursor between the `active` and `default` keys from the `cursors` config in `main.lua`.
+- `Button` switches the cursor between the `active` and `default` keys from the `cursors` config in `main.lua`. `Button(name, label, styles)` accepts `height`, `font`, `color`, `highlightColor`, `width`, `margin`; hover and focus share the highlighted look.
+- `InputPrompt` needs the prompt sheet preloaded: `cacheManager.preloadImage(glyphs.IMAGE_KEY, glyphs.IMAGE_PATH)` in `Preload`.
 - UI objects default to the `ui` layer, which draws without the camera transform.
 
 ## Example

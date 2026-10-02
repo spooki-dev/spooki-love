@@ -7,7 +7,7 @@ local sceneManager = require "engine.sceneManager"
 local audioManager = require "engine.audioManager"
 local system = require "engine.utils.system"
 local cursorManager = require "engine.cursorManager"
-local InputManager = require "engine.InputManager"
+local inputMap = require "engine.input.inputMap"
 local PostProcessing = require "engine.PostProcessing"
 local AssetExporter = require "engine.AssetExporter"
 
@@ -27,6 +27,12 @@ local DEFAULT_WATCH_DIRS = { "engine", "scenes", "gameObjects", "constants" }
 ---@field shaders table|nil Array of post-processing shader definitions, applied in order
 ---@field watch table|nil Directories watched by hot reload in dev (defaults to engine, scenes, gameObjects, constants)
 ---@field assets AssetConfig|nil Marketing assets rendered by `love . --export-assets` (see engine/AssetExporter.lua)
+---@field input InputConfig|nil Named input actions and their default bindings (see engine/input/inputMap.lua)
+
+---@class InputConfig
+---@field actions table Array of { name, label, category, bindings = { "key:space", "pad:a", ... } }
+---@field deadzone number|nil Stick deadzone 0..1 (default 0.25)
+---@field saveFile string|false|nil Save-directory file for custom bindings (default "bindings.lua"; false disables saving)
 
 ---@class Game : Object
 ---@field title string name of the game
@@ -58,11 +64,12 @@ function Game:new(config)
   self.shaders = config.shaders or {}
   self.watch = config.watch or DEFAULT_WATCH_DIRS
   self.assets = config.assets
+  self.input = config.input
   self.args = {}
   self.sceneManager = sceneManager
   self.audioManager = audioManager
   self.cursorManager = cursorManager
-  self.inputManager = InputManager()
+  self.inputManager = inputMap
   self.postProcessing = PostProcessing()
 
   self:initializeEvents()
@@ -92,7 +99,7 @@ function Game:initializeEvents()
   end
 
   function love.mousemoved(x, y, dx, dy, isTouch)
-    self:mousemoved(x, y)
+    self:mousemoved(x, y, dx, dy, isTouch)
   end
 
   function love.wheelmoved(x, y)
@@ -101,6 +108,30 @@ function Game:initializeEvents()
 
   function love.keypressed(key, scancode, isrepeat)
     self:keypressed(key, scancode, isrepeat)
+  end
+
+  function love.keyreleased(key, scancode)
+    self:keyreleased(key, scancode)
+  end
+
+  function love.gamepadpressed(joystick, button)
+    self:gamepadpressed(joystick, button)
+  end
+
+  function love.gamepadreleased(joystick, button)
+    self:gamepadreleased(joystick, button)
+  end
+
+  function love.gamepadaxis(joystick, axis, value)
+    self:gamepadaxis(joystick, axis, value)
+  end
+
+  function love.joystickadded(joystick)
+    inputMap.joystickadded(joystick)
+  end
+
+  function love.joystickremoved(joystick)
+    inputMap.joystickremoved(joystick)
   end
 
   function love.focus(focused)
@@ -171,6 +202,16 @@ function Game:load(args)
     self.cursorManager.setCursor("default")
   end
 
+  -- Actions must exist before scenes load: addScene runs load() at once and
+  -- scenes build prompts from the current bindings and device.
+  inputMap.init(self.input)
+  if self.env == "dev" and mcp_bridge then
+    inputMap.setVirtualInput({
+      keyDown = mcp_bridge.isVirtualKeyDown,
+      mouseDown = mcp_bridge.isVirtualMouseDown,
+    })
+  end
+
   for _, SceneConstructor in ipairs(self.scenes) do
     self.sceneManager.addScene(SceneConstructor)
   end
@@ -211,6 +252,18 @@ function Game:load(args)
 end
 
 function Game:update(dt)
+  -- Poll input first so pressed()/released() are valid for the whole frame,
+  -- then deliver action events before the scene's own update.
+  inputMap.update(dt)
+  local pressed, pressedCount = inputMap.getPressed()
+  for i = 1, pressedCount do
+    self.sceneManager.actionPressed(pressed[i])
+  end
+  local released, releasedCount = inputMap.getReleased()
+  for i = 1, releasedCount do
+    self.sceneManager.actionReleased(released[i])
+  end
+
   self.postProcessing:update(dt)
   self.sceneManager.update(dt)
 
@@ -244,35 +297,58 @@ function Game:resize(w, h)
   self.postProcessing:resize(w, h)
 end
 
+-- Raw events go to inputMap first (rebind capture, active-device tracking,
+-- tap latching). A capture in progress consumes the event.
+
 function Game:mousepressed(x, y, button, istouch, presses)
-  print("Game.mousePressed called with x: " .. x .. ", y: " .. y .. ", button: " .. button)
+  if inputMap.mousepressed(x, y, button, istouch, presses) then return end
   self.sceneManager.mousePressed(x, y, button, istouch, presses)
 end
 
 function Game:mousereleased(x, y, button, istouch, presses)
+  if inputMap.mousereleased(x, y, button, istouch, presses) then return end
   if button == 1 then
     self.sceneManager.click(x, y, button, istouch, presses)
   end
 end
 
 function Game:mousemoved(x, y, dx, dy, isTouch)
+  inputMap.mousemoved(x, y, dx, dy)
   self.sceneManager.mouseMoved(x, y)
 end
 
 function Game:wheelmoved(x, y)
+  inputMap.wheelmoved(x, y)
   self.sceneManager.wheelMoved(x, y)
 end
 
 function Game:keypressed(key, scancode, isrepeat)
-  if not self.sceneManager then
-    error("sceneManager is nil in Game:keypressed")
-  end
+  if inputMap.keypressed(key, scancode, isrepeat) then return end
   self.sceneManager.keypressed(key, scancode, isrepeat)
+end
+
+function Game:keyreleased(key, scancode)
+  inputMap.keyreleased(key, scancode)
+  self.sceneManager.keyreleased(key, scancode)
+end
+
+function Game:gamepadpressed(joystick, button)
+  inputMap.gamepadpressed(joystick, button)
+end
+
+function Game:gamepadreleased(joystick, button)
+  inputMap.gamepadreleased(joystick, button)
+end
+
+function Game:gamepadaxis(joystick, axis, value)
+  inputMap.gamepadaxis(joystick, axis, value)
 end
 
 function Game:focus(focused)
   if focused then
     self.cursorManager.resetCursor()
+  else
+    inputMap.releaseAll()
   end
 end
 

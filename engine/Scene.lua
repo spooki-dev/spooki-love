@@ -35,6 +35,8 @@ function Scene:new(name)
   self.mouseOverGameObjects = {}
   self.clickGameObjects = {}
   self.scrollGameObjects = {}
+  self.keyGameObjects = {}    -- objects defining onKeyPressed
+  self.actionGameObjects = {} -- objects defining onActionPressed / onActionReleased
   self.layers = {}
   self.layerOrder = {}
   self.loaded = false
@@ -127,6 +129,12 @@ function Scene:addGameObject(gameObject)
 
   if gameObject.handleScroll then
     self.scrollGameObjects[gameObject.name] = gameObject
+  end
+  if gameObject.onKeyPressed then
+    self.keyGameObjects[gameObject.name] = gameObject
+  end
+  if gameObject.onActionPressed or gameObject.onActionReleased then
+    self.actionGameObjects[gameObject.name] = gameObject
   end
 
   gameObject:handleLoad()
@@ -267,6 +275,14 @@ function Scene:removeGameObject(gameObject)
   if self.scrollGameObjects and gameObject.name and self.scrollGameObjects[gameObject.name] == gameObject then
     self.scrollGameObjects[gameObject.name] = nil
   end
+
+  if self.keyGameObjects and gameObject.name and self.keyGameObjects[gameObject.name] == gameObject then
+    self.keyGameObjects[gameObject.name] = nil
+  end
+
+  if self.actionGameObjects and gameObject.name and self.actionGameObjects[gameObject.name] == gameObject then
+    self.actionGameObjects[gameObject.name] = nil
+  end
 end
 
 ---Destroy a GameObject by reference or name
@@ -282,17 +298,49 @@ function Scene:destroyGameObject(gameObjectOrName)
   end
 end
 
--- Pass keypressed event to all game objects
+-- Pass keypressed event to the scene hook and to objects that define onKeyPressed.
+-- Prefer actions (onActionPressed) over raw keys so bindings stay remappable.
 function Scene:keypressed(key, scancode, isrepeat)
   if self.onKeyPressed then
     self:onKeyPressed(key, scancode, isrepeat)
   end
-
-  -- TODO: cache game objects that have a key press event
-  for name, gameObject in pairs(self.gameObjects) do
-    -- Only call onKeyPressed if the gameObject is active
-    if gameObject.active and gameObject.onKeyPressed then
+  for name, gameObject in pairs(self.keyGameObjects) do
+    if gameObject.active then
       gameObject:onKeyPressed(key, scancode, isrepeat)
+    end
+  end
+end
+
+function Scene:keyreleased(key, scancode)
+  if self.onKeyReleased then
+    self:onKeyReleased(key, scancode)
+  end
+end
+
+--- An input action (engine/input/inputMap.lua) went down this frame. Calls the
+--- optional scene hook `onActionPressed(name)` then every active object that
+--- defines `onActionPressed`.
+--- @param name string Action name
+function Scene:actionPressed(name)
+  if self.onActionPressed then
+    self:onActionPressed(name)
+  end
+  for _, gameObject in pairs(self.actionGameObjects) do
+    if gameObject.active and gameObject.onActionPressed then
+      gameObject:onActionPressed(name)
+    end
+  end
+end
+
+--- An input action went up this frame. See actionPressed.
+--- @param name string Action name
+function Scene:actionReleased(name)
+  if self.onActionReleased then
+    self:onActionReleased(name)
+  end
+  for _, gameObject in pairs(self.actionGameObjects) do
+    if gameObject.active and gameObject.onActionReleased then
+      gameObject:onActionReleased(name)
     end
   end
 end

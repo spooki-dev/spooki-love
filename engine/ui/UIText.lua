@@ -26,9 +26,19 @@ function UIText:load()
   local defaultY = (parentPos and parentPos.y or 0) + parentPadding.w
   local paddingX = (parentPadding.z + parentPadding.x)
   self:setPos(Vector2(defaultX, defaultY))
-  local textWidth = self.font:getWidth(self.text)
   self.textAlign = self.styles.textAlign or "left"
-  self.width = self.styles.width or (self.parent.width - paddingX)
+  -- Width: a number is used as-is; a percentage is resolved against the
+  -- parent (unless a flex parent already sized this child); otherwise fill.
+  local w = self.styles.width
+  if type(w) == "number" then
+    self.width = w
+  elseif type(w) == "string" and w:find("%%") then
+    if not self.isFlexChild then
+      self.width = (self.parent.width - paddingX) * (tonumber(w:sub(1, -2)) or 100) / 100
+    end
+  elseif not self.isFlexChild then
+    self.width = self.parent.width - paddingX
+  end
   self:recalculateHeight()
 end
 

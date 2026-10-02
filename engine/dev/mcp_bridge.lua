@@ -48,6 +48,16 @@ function mcp_bridge.mouseIsDown(button)
     return virtualMouse.buttons[button] == true or love.mouse.isDown(button)
 end
 
+-- Virtual-only readers, for engine/input/inputMap.lua which polls the real
+-- devices itself (by scancode) and adds these on top. Keys are KeyConstants.
+function mcp_bridge.isVirtualKeyDown(key)
+    return virtualKeys[key] == true
+end
+
+function mcp_bridge.isVirtualMouseDown(button)
+    return virtualMouse.buttons[button] == true
+end
+
 function mcp_bridge.getMousePosition()
     return virtualMouse.x, virtualMouse.y
 end
@@ -209,9 +219,21 @@ end
 --   {type="mouse_move", x=100, y=200}
 --   {type="mouse_down", button=1}
 --   {type="mouse_up", button=1}
+--   {type="action_down", action="jump", duration=0.2}   -- named input action
+--   {type="action_up", action="jump"}
 function mcp_bridge.handleInput(command)
     local t = command.type
-    if t == "key_down" then
+    if t == "action_down" or t == "action_up" then
+        local ok, inputMap = pcall(require, "engine.input.inputMap")
+        if not ok or not inputMap.getAction(command.action or "") then
+            return json.encode({ error = "Unknown input action: " .. tostring(command.action) })
+        end
+        if t == "action_down" then
+            inputMap.pressVirtualAction(command.action, command.duration)
+        else
+            inputMap.releaseVirtualAction(command.action)
+        end
+    elseif t == "key_down" then
         mcp_bridge.pressKey(command.key, command.duration)
     elseif t == "key_up" then
         mcp_bridge.releaseKey(command.key)
@@ -313,6 +335,7 @@ function mcp_bridge.runLua(code)
     local env = {
         objects = objectGetter and objectGetter() or {},
         love = love,
+        require = require, -- reach engine modules, e.g. require("engine.input.inputMap")
         print = print,
         pairs = pairs,
         ipairs = ipairs,

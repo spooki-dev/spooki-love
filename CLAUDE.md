@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A LÖVE (Love2D) 11.5 game template written in plain Lua (LuaJIT on desktop, PUC Lua 5.1 in the love.js web build). The reusable engine lives under `engine/` and must not require anything outside it; the game is configured from `main.lua`. No tests, no build step, no package manager, no CI.
+A LÖVE (Love2D) 11.5 game template written in plain Lua (LuaJIT on desktop, PUC Lua 5.1 in the love.js web build). The reusable engine lives under `engine/` and must not require anything outside it; the game is configured from `main.lua`. Input is action-based (`engine/input/`): game code reads named actions, never keys or gamepad buttons directly, so every game gets remapping, gamepad support and on-screen prompts for free (see `docs/Input.md`). No tests, no build step, no package manager, no CI.
 
 ## Running the Game
 
@@ -68,11 +68,12 @@ Game({
   cursors = { default = { path = "assets/cursors/default.png", hotX = 8, hotY = 8 }, active = { ... } },
   shaders = {},                     -- optional post-processing chain, in order
   watch = { "engine", "scenes", "gameObjects", "constants", "state" },
+  input = { deadzone = 0.25, actions = { { name = "jump", label = "Jump", category = "Actions", bindings = { "key:space", "pad:a" } }, ... } },
   assets = { outputDir = "assets/generated", items = { { name = "icon", scene = AssetIcon, width = 1024, height = 1024 }, ... } },
 })
 ```
 
-`scenes` is registered in order and `sceneManager.addScene` calls each scene's `load()` immediately, so **`Preload` must be first** — other scenes build UI that needs its cached fonts. `defaultScene` is made current after registration. `cursors`, `shaders` and `watch` are optional.
+`scenes` is registered in order and `sceneManager.addScene` calls each scene's `load()` immediately, so **`Preload` must be first** — other scenes build UI that needs its cached fonts. `defaultScene` is made current after registration. `cursors`, `shaders`, `watch` and `input` are optional; `inputMap.init(config.input)` runs before scenes load so prompts can read bindings.
 
 ### Core engine (`engine/`)
 
@@ -90,19 +91,23 @@ Game({
 | `PostProcessing.lua` | Ping-pong canvas shader chain populated from the `shaders` config. `uniforms` is cleared every frame and refilled by the current scene's optional `updateShaderUniforms(uniforms, dt)` hook. `process(canvas, scene)` runs the chain offscreen at any size. |
 | `AssetExporter.lua` | Renders asset scenes to canvases at exact sizes and writes PNGs with plain `io` (outside the save dir). Triggered by `love . --export-assets`, which quits before any dev tooling starts. |
 | `renderer.lua` | Shared rendering utilities used by GameObject's `handleDraw`. |
-| `InputManager.lua` | Input state tracking. |
+| `input/inputMap.lua` | Action-based input singleton: actions with keyboard/mouse/gamepad bindings, per-frame polling with analog strength, `down/pressed/released/strength/axis/vector`, action events, active-device tracking, rebind capture, persistence to `bindings.lua`. Locked `ui_*` menu actions are built in. |
+| `input/glyphs.lua` | Labels ("Space", "RT", "Cross") and sprite tiles for bindings, indexed into the Kenney Input Prompts Pixel 16× sheet (`assets/graphics/input-prompts.png`, preloaded under key `input-prompts`). Nintendo pads swap A/B and X/Y. |
 | `State.lua` | Generic key/value state container (`state/GameState.lua` is an instance). Deep-copies its initial table so `reset()` really restores the defaults. |
-| `ui/` | UI primitives: `UIBox`, `UICanvas`, `UIStack`, `UIText`, `UIBar`, `BarFill`, `Button`. |
+| `ui/` | UI primitives: `UIBox`, `UICanvas`, `UIStack`, `UIText`, `UIBar`, `BarFill`, `Button` (focusable), `InputPrompt` (what an action is bound to on the active device), `FocusGroup` (keyboard/gamepad navigation over focusables). |
 | `components/` | Optional mixins: `HitHurtBox`, `LightManager` (wraps the shadows lib). |
 | `utils/` | Small helpers: easing, hexcolor, intersection, noise, perlin, theta pathfinding, `table.deepCopy`, table serialisation (Lua 5.1 safe, deterministic). |
 | `lib/` | Vendored third-party code: `classic.lua` (rxi/classic), `hotReload.lua`, `shadows/` (Shädows light engine, unmaintained upstream; read its README before modifying). |
-| `dev/mcp_bridge.lua` | lovepilot MCP bridge, loaded via `pcall` in dev only. |
+| `dev/mcp_bridge.lua` | lovepilot MCP bridge, loaded via `pcall` in dev only. Its virtual input feeds `inputMap` polling; `send_input` accepts `action_down`/`action_up` as well as keys and mouse. |
 
 ### Engine contracts the game must honour
 
 - **Font keys**: `engine/ui` looks up fonts by key `body` (UIText default), `small` (Button, UIBar), plus `header`/`subheader`. Preload them in the first scene.
 - **Cursor keys**: `Button` switches between `active` and `default`. Provide both in the `cursors` config.
 - **Layer names**: `ground`, `entities`, `ui`. `ui` draws in screen space; UI objects default to it.
+- **Input actions**: read input via `inputMap` (`require "engine.input.inputMap"`), never `love.keyboard`/`love.joystick` in game code. `ui_up/ui_down/ui_left/ui_right/ui_accept/ui_cancel` always exist and are locked. Binding shorthand: `key:<scancode>`, `mouse:<n>`, `pad:<button>`, `axis:<axis>+|-`.
+- **Prompt sheet**: `InputPrompt` needs `cacheManager.preloadImage(glyphs.IMAGE_KEY, glyphs.IMAGE_PATH)` in `Preload`; without it prompts fall back to drawn text keycaps.
+- **Save identity**: `conf.lua` sets `t.identity`, which names the save directory holding `bindings.lua` and `windowpos.txt`.
 - **Quit hook**: `Game:quit` calls `onQuit()` on the current scene if defined. Autosave there.
 
 ### Saving
@@ -126,8 +131,10 @@ end
 ### Scenes (`scenes/`)
 
 - `Preload.lua` — preloads fonts via cacheManager. Never made current; registered first for its `load()` side effect.
-- `Menu.lua` — default scene. Start → `Game`.
+- `Menu.lua` — default scene. Start → `Game`, Controls → `Controls`; a `FocusGroup` makes it keyboard/gamepad navigable and `InputPrompt`s show the navigation keys.
 - `Game.lua` — empty scene to build on.
+- `Controls.lua` — rebinding screen: every unlocked action by category with a keyboard/mouse and a gamepad cell, press-to-rebind, stolen-binding notice, reset, back. Navigable with mouse, keyboard or pad. Keep it; add your actions to `main.lua` and they appear.
+- `Controls.lua` — rebinding screen: every unlocked action by category with a keyboard/mouse and a gamepad cell, press-to-rebind, stolen-binding notice, reset, back. Navigable with mouse, keyboard or pad. Keep it; add your actions to `main.lua` and they appear.
 
 Scene names (passed to `Scene.super.new(self, "Name")`) must be unique. To add a scene, create it in `scenes/`, require it in `main.lua` and add it to the `scenes` array. See `docs/CreatingANewScene.md`.
 
@@ -135,7 +142,7 @@ Scene names (passed to `Scene.super.new(self, "Name")`) must be unique. To add a
 
 All game objects extend `GameObject`. Key naming rule: **every GameObject name must be unique within a scene** — duplicates throw an error. `SampleGameObject.lua` and `SampleUIGameObject.lua` are starting points.
 
-Auto-registered event handlers (define on a GameObject to opt in): `onClick`, `onMouseOver`, `onMouseEntered`, `onMouseExit`, `handleScroll`, `onKeyPressed`, `getHitbox`/`getHurtbox`.
+Auto-registered event handlers (define on a GameObject to opt in): `onClick`, `onMouseOver`, `onMouseEntered`, `onMouseExit`, `handleScroll`, `onKeyPressed`, `onActionPressed`/`onActionReleased` (named input actions; prefer these over raw keys), `getHitbox`/`getHurtbox`. Scenes may define `onActionPressed(name)`/`onActionReleased(name)` too.
 
 ### UI system (`engine/ui/`)
 
@@ -167,3 +174,4 @@ Every scene has three default layers: `ground` (z=1), `entities` (z=2), `ui` (z=
 - Use `assert()` for internal logic checks; custom error logging for non-fatal issues.
 - Preloaded font keys: `header`, `subheader`, `body`, `small` (PixelOperator8.ttf). Asset scenes add `asset-<size>` on demand.
 - Window: 1280x720, resizable, min 1024x600.
+- Input: declare actions in `main.lua`, read them with `inputMap`, show them with `InputPrompt`.

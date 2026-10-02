@@ -3,6 +3,7 @@ local Game = require "engine.Game"
 local Preload = require "scenes.Preload"
 local Menu = require "scenes.Menu"
 local GameScene = require "scenes.Game"
+local Controls = require "scenes.Controls"
 
 -- Marketing asset scenes, rendered by `love . --export-assets` (never registered as game scenes).
 local AssetIcon = require "scenes.assets.Icon"
@@ -24,13 +25,28 @@ Game({
   title = "New Game",
   env = "dev",
   -- Registered in order; Preload must come first because addScene runs load() immediately.
-  scenes = { Preload, Menu, GameScene },
+  scenes = { Preload, Menu, GameScene, Controls },
   defaultScene = "Menu",
   cursors = {
     default = { path = "assets/cursors/default.png", hotX = 8, hotY = 8 },
     active = { path = "assets/cursors/active.png", hotX = 8, hotY = 8 },
   },
   watch = { "engine", "scenes", "gameObjects", "constants", "state" },
+  -- Named input actions (see docs/Input.md). Each binding is one input:
+  -- "key:<scancode>", "mouse:<button>", "pad:<button>", "axis:<axis>+|-".
+  -- The engine adds the locked ui_* menu actions itself; players remap the
+  -- rest in the Controls scene and changes persist to bindings.lua.
+  input = {
+    deadzone = 0.25,
+    actions = {
+      { name = "move_left",  label = "Move left",  category = "Movement", bindings = { "key:a", "key:left",  "axis:leftx-", "pad:dpleft" } },
+      { name = "move_right", label = "Move right", category = "Movement", bindings = { "key:d", "key:right", "axis:leftx+", "pad:dpright" } },
+      { name = "move_up",    label = "Move up",    category = "Movement", bindings = { "key:w", "key:up",    "axis:lefty-", "pad:dpup" } },
+      { name = "move_down",  label = "Move down",  category = "Movement", bindings = { "key:s", "key:down",  "axis:lefty+", "pad:dpdown" } },
+      { name = "action",     label = "Action",     category = "Actions",  bindings = { "key:space", "mouse:1", "pad:a" } },
+      { name = "pause",      label = "Menu",       category = "System",   bindings = { "key:escape", "pad:start" } },
+    },
+  },
   -- Exported to assets/generated/<name>.png; scripts/release.sh bakes icon/favicon into the builds.
   assets = {
     outputDir = "assets/generated",

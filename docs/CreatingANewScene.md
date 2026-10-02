@@ -64,6 +64,9 @@ Game({
    - Switch to it at runtime with `sceneManager.setCurrentScene("NewScene")`.
    - Optionally define `NewScene:updateShaderUniforms(uniforms, dt)` to feed post-processing
      shader uniforms; the table is cleared every frame before the call.
+   - Read input through actions: `inputMap.down("jump")` in `update`, or define
+     `NewScene:onActionPressed(name)` / `onActionReleased(name)` for events. Actions are
+     declared in the `input` block of `main.lua`; see `docs/Input.md`.
 
 ## Example
 Here is an example of a new scene named `MyCustomScene`:

@@ -48,6 +48,11 @@ This document outlines the key features of our application.
 - **Description**: Scenes can be rendered offscreen at exact pixel sizes and written as PNGs. Used for icons, covers and logos so marketing art follows the game's fonts and colours.
 - **Usage**: Add an `assets` block to the `Game` config with `{ name, scene, width, height, postProcess?, transparent? }` items, where `scene` is a Scene constructor taking `(width, height)`. Run `love . --export-assets`.
 
+## Feature 7: Input Actions
+
+- **Description**: Named actions with keyboard, mouse and gamepad bindings; analog strength and vector composition; rebinding with persistence; on-screen prompts that follow the active device; keyboard/gamepad menu navigation.
+- **Usage**: Declare actions in the `input` block of the `Game` config, read them with `inputMap.down/pressed/strength/vector`, show them with `InputPrompt`, and keep `scenes/Controls.lua` for remapping. See `docs/Input.md`.
+
 ## Feature 6: Saving
 
 - **Description**: `engine/saveManager.lua` persists one plain-data table to LÖVE's save directory as Lua source. Every call is safe: when storage is unavailable, `save` returns false and `load` returns nil instead of raising. Saves carry a schema `version`; a `migrate` function can upgrade old files.

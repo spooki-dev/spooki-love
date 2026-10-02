@@ -1,3 +1,5 @@
+local inputMap = require "engine.input.inputMap"
+
 local sceneManager = {}
 local currentScene = nil
 local scenes = {}
@@ -57,6 +59,8 @@ function sceneManager.setCurrentScene(scene)
   end
   if scenes[scene] then
     currentScene = scene
+    -- The press that triggered the switch must not also fire in the new scene.
+    inputMap.flushEdges()
     if not scenes[scene].loaded then
       sceneManager.checkAndCallSceneFunction("handleLoad")
       scenes[scene].loaded = true
@@ -100,6 +104,25 @@ function sceneManager.keypressed(key, scancode, isrepeat)
   if scene and scene.keypressed then
     scene:keypressed(key, scancode, isrepeat)
   end
+end
+
+function sceneManager.keyreleased(key, scancode)
+  local scene = scenes[currentScene]
+  if scene and scene.keyreleased then
+    scene:keyreleased(key, scancode)
+  end
+end
+
+--- An input action went down this frame (see engine/input/inputMap.lua).
+--- @param name string Action name
+function sceneManager.actionPressed(name)
+  sceneManager.checkAndCallSceneFunction("actionPressed", name)
+end
+
+--- An input action went up this frame.
+--- @param name string Action name
+function sceneManager.actionReleased(name)
+  sceneManager.checkAndCallSceneFunction("actionReleased", name)
 end
 
 function sceneManager.mouseMoved(x, y)

@@ -35,7 +35,9 @@ local renderer = require "engine.renderer"
 ---@field ysortOffset number change where the ysorting happens
 ---@field loaded boolean Whether the game object has been loaded
 ---@field isMouseOver boolean Whether or not the mouse is over the gameObject (always false if there are no mouse event handlers)
----@field onKeyPressed function Key pressed event handler
+---@field onKeyPressed function Key pressed event handler (raw keys; prefer onActionPressed)
+---@field onActionPressed function Input action pressed handler, receives the action name
+---@field onActionReleased function Input action released handler, receives the action name
 ---@field onMouseOver function Mouse over event handler
 ---@field onMouseEntered function Mouse entered event handler
 ---@field onMouseExit function Mouse exit event handler
@@ -463,6 +465,7 @@ function GameObject:handleMouseOver(x, y)
 end
 
 function GameObject:handleClick(x, y)
+  if not self.active then return end
   local mouseRect = {
     x = x,
     y = y,

@@ -33,7 +33,8 @@ You get a Menu scene with a Start button that switches to an empty `Game` scene,
 3. Preload fonts and spritesheets in `scenes/Preload.lua`. The UI primitives expect font keys `header`, `subheader`, `body`, `small`.
 4. Put entities in `gameObjects/`, data in `constants/`, and shared state in `state/GameState.lua`.
 5. Edit the `lines`/`subtitle` in `scenes/assets/*.lua`; `love . --export-assets` regenerates the icon, favicon, cover, social, wide and logo images in `assets/generated/`.
-6. Do not edit `engine/`. Anything the engine needs from the game goes through the `Game` config table in `main.lua` or a scene hook (for example `updateShaderUniforms`).
+6. Declare input actions in the `input` block of `main.lua` and read them with `inputMap`; the Controls scene lets players remap them and `InputPrompt` shows the bindings (`docs/Input.md`).
+7. Do not edit `engine/`. Anything the engine needs from the game goes through the `Game` config table in `main.lua` or a scene hook (for example `updateShaderUniforms`).
 
 See `CLAUDE.md` for the architecture and engine contracts.
 
