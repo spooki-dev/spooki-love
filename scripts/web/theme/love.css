@@ -1,0 +1,28 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #000000;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The canvases must have no border or padding or mouse coordinates drift. */
+#loadingCanvas,
+#canvas {
+  display: block;
+  border: 0 none;
+  padding: 0;
+  margin: 0 auto;
+}
+
+#canvas {
+  visibility: hidden;
+}

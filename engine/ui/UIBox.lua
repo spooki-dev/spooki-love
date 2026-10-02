@@ -104,24 +104,23 @@ function UIBox:recalculateHeight()
   end
   local totalHeight = 0
 
+  -- Absolute children are skipped: they do not contribute to flow height.
   for i, child in ipairs(self.children) do
-    if child.styles.position == "absolute" then
-      goto continue
-    end
-    local childHeight = child.height or 0
-    if self.styles.display == "flex" and self.styles.flexDirection == "row" then
-      totalHeight = math.max(totalHeight, childHeight)
-    else
-      local childMargin = child.styles.margin or Vector4(0, 0, 0, 0)
-      local childPadding = child.styles.padding or Vector4(0, 0, 0, 0)
-      local marginHeight = childMargin.x + childMargin.z
-      local paddingHeight = childPadding.x + childPadding.z
-      totalHeight = totalHeight + (childHeight) + marginHeight + paddingHeight
-      if i < #self.children then
-        totalHeight = totalHeight + gap
+    if child.styles.position ~= "absolute" then
+      local childHeight = child.height or 0
+      if self.styles.display == "flex" and self.styles.flexDirection == "row" then
+        totalHeight = math.max(totalHeight, childHeight)
+      else
+        local childMargin = child.styles.margin or Vector4(0, 0, 0, 0)
+        local childPadding = child.styles.padding or Vector4(0, 0, 0, 0)
+        local marginHeight = childMargin.x + childMargin.z
+        local paddingHeight = childPadding.x + childPadding.z
+        totalHeight = totalHeight + (childHeight) + marginHeight + paddingHeight
+        if i < #self.children then
+          totalHeight = totalHeight + gap
+        end
       end
     end
-    ::continue::
   end
 
   self:setHeight(totalHeight)
@@ -150,36 +149,35 @@ function UIBox:recalculateChildPos()
 
 
   -- Calculate widths for flex children first block children are full width minus paddingX
+  -- Absolute children are skipped here and sized in the positioning pass below.
   for _, child in ipairs(self.children) do
-    if child.styles.position == "absolute" then
-      goto continue
-    end
-    if display == "flex" and self.styles.flexDirection == "row" then
-      if child.styles.width then
-        if string.find(child.styles.width, "%%") then
-          local percent = tonumber(child.styles.width:sub(1, -2)) / 100
-          child:setWidth((totalWidth - (gap * (#self.children - 1))) * percent);
+    if child.styles.position ~= "absolute" then
+      if display == "flex" and self.styles.flexDirection == "row" then
+        if child.styles.width then
+          if string.find(child.styles.width, "%%") then
+            local percent = tonumber(child.styles.width:sub(1, -2)) / 100
+            child:setWidth((totalWidth - (gap * (#self.children - 1))) * percent);
+          else
+            child:setWidth(child.styles.width)
+          end
         else
-          child:setWidth(child.styles.width)
+          child:setWidth((totalWidth - (gap * (#self.children - 1))) / #self.children);
         end
+        totalChildWidth = totalChildWidth + child.width
       else
-        child:setWidth((totalWidth - (gap * (#self.children - 1))) / #self.children);
-      end
-      totalChildWidth = totalChildWidth + child.width
-    else
-      if child.styles.width then
-        if string.find(child.styles.width, "%%") then
-          local percent = tonumber(child.styles.width:sub(1, -2)) / 100
-          child:setWidth((self.width - paddingX) * percent)
+        if child.styles.width then
+          if string.find(child.styles.width, "%%") then
+            local percent = tonumber(child.styles.width:sub(1, -2)) / 100
+            child:setWidth((self.width - paddingX) * percent)
+          else
+            child:setWidth(child.styles.width)
+          end
         else
-          child:setWidth(child.styles.width)
+          child:setWidth(self.width - paddingX)
         end
-      else
-        child:setWidth(self.width - paddingX)
+        totalChildWidth = math.min(totalChildWidth + child.width, self.width - paddingX)
       end
-      totalChildWidth = math.min(totalChildWidth + child.width, self.width - paddingX)
     end
-    ::continue::
   end
 
   if display == "flex" and self.styles.flexDirection == "row" and self.styles.justifyContent == "center" then
@@ -202,9 +200,7 @@ function UIBox:recalculateChildPos()
         child:setHeight(self.height - (bottom - top))
       end
       child:setPos(parentPos:add(Vector2(child.styles.left or 0, child.styles.top or 0)))
-      goto continue
-    end
-    if display == "flex" then
+    elseif display == "flex" then
       if self.styles.flexDirection == "row" then
         local x = 0
         local y = 0
@@ -237,7 +233,6 @@ function UIBox:recalculateChildPos()
 
       stackYPos = stackYPos + (child.styles.height or child.height or 0) + gap + childMargin.z
     end
-    ::continue::
     child:recalculateChildPos()
   end
 end

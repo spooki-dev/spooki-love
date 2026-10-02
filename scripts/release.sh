@@ -55,6 +55,12 @@ love-release -t "$TITLE" -a "$AUTHOR" --uti "$UTI" -p "$PKG" \
 LOVEFILE="$OUT/$TITLE.love"
 [[ -f "$LOVEFILE" ]] || { echo "love-release did not produce $LOVEFILE" >&2; exit 1; }
 
+step "Check shipped Lua parses under Lua 5.1 (love.js runtime)"
+# love.js runs PUC Lua 5.1, not LuaJIT. Check the exact files inside the .love
+# so the web build cannot ship something that only LuaJIT accepts (e.g. goto).
+unzip -q "$LOVEFILE" -d "$WORK/lovecheck"
+(cd "$WORK/lovecheck" && "$OLDPWD/scripts/lint-lua51.sh" $(find . -name '*.lua' | sed 's|^\./||'))
+
 step "Fetch LÖVE $LOVE_RUNTIME_VERSION runtimes"
 mkdir -p "$RUNTIME_CACHE"
 for platform in macos win32 win64; do
@@ -111,9 +117,14 @@ done
 
 step "Build web"
 love.js -c -t "$TITLE" "$LOVEFILE" "$OUT/web" >/dev/null
+# Swap the stock love.js page (heading, footer, "Powered by" text) for our bare
+# template in scripts/web/, keeping love.js's game.js/love.js/love.wasm/game.data.
+cp -R scripts/web/. "$OUT/web/"
+rm -f "$OUT/web/theme/bg.png"
+TITLE="$TITLE" perl -pi -e 's/\{\{TITLE\}\}/$ENV{TITLE}/g' "$OUT/web/index.html"
 cp "$GEN/favicon.png" "$OUT/web/theme/favicon.png"
-perl -0pi -e 's|(<link rel="stylesheet"[^\n]*\n)|$1    <link rel="icon" type="image/png" href="theme/favicon.png">\n|' "$OUT/web/index.html"
-grep -q 'theme/favicon.png' "$OUT/web/index.html" || { echo "favicon link not inserted" >&2; exit 1; }
+grep -q 'theme/favicon.png' "$OUT/web/index.html" || { echo "favicon link missing from web page" >&2; exit 1; }
+grep -q '{{' "$OUT/web/index.html" && { echo "unsubstituted placeholder in web page" >&2; exit 1; }
 
 # butler unpacks zip uploads, and a .love is a zip, so push it from a folder.
 mkdir -p "$OUT/love"
@@ -141,6 +152,11 @@ so upload these by hand on the edit page:
   $GEN/social.png   1200x630   Devlogs and social posts
   $GEN/logo.png     1600x400   Press kit / transparent banner
   $GEN/icon.png     1024x1024  Store listings / press kit
+  assets/screenshots/*.png     Edit game -> Screenshots
+
+First release only: on the edit page tick "This file will be played in the
+browser" on the *web* channel upload (not the .love one, which has no
+index.html), set its viewport to 1280x720, and set the page kind to HTML.
 MSG
 if [[ $PUSH -eq 1 ]]; then
   open "$ITCH_EDIT_URL" 2>/dev/null || echo "Edit page: $ITCH_EDIT_URL"

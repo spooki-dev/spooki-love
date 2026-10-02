@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Reject staged Lua that the love.js (Lua 5.1) runtime cannot parse.
+# Enabled with: git config core.hooksPath .githooks
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+files=$(git diff --cached --name-only --diff-filter=ACMR -- '*.lua')
+[[ -z "$files" ]] && exit 0
+scripts/lint-lua51.sh $files || {
+  echo "commit blocked: fix the Lua 5.1 parse errors above (love.js runs Lua 5.1, not LuaJIT)" >&2
+  exit 1
+}

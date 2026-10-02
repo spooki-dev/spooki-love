@@ -31,3 +31,5 @@ love . --export-assets        # regenerate assets/generated/*.png only
 ```
 
 Set `TITLE`, `PKG`, `UTI`, `AUTHOR` and `ITCH` at the top of `scripts/release.sh`. Requires `love-release`, `love.js`, `butler` (logged in), node and the macOS `iconutil`/`sips`/`plutil` tools. See `CLAUDE.md` for details and for which itch.io page images still need a manual upload.
+
+The web build runs on Lua 5.1 (love.js), not LuaJIT, so avoid `goto` and LuaJIT-only modules. `scripts/lint-lua51.sh` checks every tracked Lua file with a real Lua 5.1 parser; enable the pre-commit hook with `git config core.hooksPath .githooks`. The web page itself is `scripts/web/index.html` plus `theme/love.css`: a bare canvas on black, with no love.js heading or footer.

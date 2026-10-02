@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A LÖVE (Love2D) 11.5 game template written in plain Lua (LuaJIT). The reusable engine lives under `engine/` and must not require anything outside it; the game is configured from `main.lua`. No tests, no build step, no package manager, no CI.
+A LÖVE (Love2D) 11.5 game template written in plain Lua (LuaJIT on desktop, PUC Lua 5.1 in the love.js web build). The reusable engine lives under `engine/` and must not require anything outside it; the game is configured from `main.lua`. No tests, no build step, no package manager, no CI.
 
 ## Running the Game
 
@@ -13,7 +13,15 @@ A LÖVE (Love2D) 11.5 game template written in plain Lua (LuaJIT). The reusable 
 /Applications/love.app/Contents/MacOS/love .
 ```
 
-There is no lint or test command. Verify changes by running the game. Hot-reload is active in dev mode — saved edits under the directories listed in the `watch` config in `main.lua` reload automatically. Backtick key force-reloads. Reload clears `package.loaded`, re-executes `main.lua` and re-runs `love.load()`, so **duplicate GameObject names will throw on reload**. `main.lua` sets `io.stdout:setvbuf("no")` so prints appear immediately when stdout is piped.
+There is no test command. Verify changes by running the game. The one lint is `scripts/lint-lua51.sh` (see below). Hot-reload is active in dev mode — saved edits under the directories listed in the `watch` config in `main.lua` reload automatically. Backtick key force-reloads. Reload clears `package.loaded`, re-executes `main.lua` and re-runs `love.load()`, so **duplicate GameObject names will throw on reload**. `main.lua` sets `io.stdout:setvbuf("no")` so prints appear immediately when stdout is piped.
+
+### Lua 5.1 compatibility (web build)
+
+love.js runs the game on PUC Lua 5.1, not LuaJIT, so game and engine code must stay within the Lua 5.1 subset both runtimes share. No `goto`/`::label::`, no `ffi`/`jit`/`bit` outside `engine/dev`, no `table.pack`/`table.unpack`/`math.tointeger`, no `\z`/`\x` string escapes. Three layers enforce this:
+
+- `.luarc.json` sets the LuaLS runtime to `Lua 5.1`, so the editor flags these as syntax errors.
+- `scripts/lint-lua51.sh [files...]` parses files with a real `luac` 5.1 (`-p`, no execution). It builds Lua 5.1.5 from the official tarball into `~/.cache/love-release/` on first run because Homebrew no longer ships `lua@5.1`. With no arguments it checks every tracked `.lua` file.
+- `.githooks/pre-commit` runs that lint over staged Lua files. Enable it per clone with `git config core.hooksPath .githooks`. `scripts/release.sh` also runs it over the contents of the built `.love` before packaging anything.
 
 ### Build and release
 
@@ -29,7 +37,8 @@ Notes:
 - `love-release` is capped at LÖVE 11.3, so it is only used to produce the `.love` (for its exclude list). Mac/Windows packages are assembled by the script from `love-11.5-{macos,win32,win64}.zip`, cached in `~/.cache/love-release/`.
 - The tracked `DEV` marker file turns on hot reload and the MCP bridge; builds exclude it so shipped copies run clean.
 - Windows icons are patched into `love.exe` by `scripts/patch-win-icon.mjs` (node, deps in `scripts/package.json`). The Mac icon is an `.icns` built with `iconutil`; the script also removes `CFBundleIconName` so macOS reads the `.icns` rather than `Assets.car`.
-- butler can only push build channels. itch.io has no API for cover/screenshot images, so those remain a manual upload.
+- The web page is our own template in `scripts/web/` (`index.html` with a `{{TITLE}}` placeholder, `theme/love.css`), copied over the love.js output so the page shows only the canvas on black: no heading, footer or "Powered by" text. love.js's `game.js`/`love.js`/`love.wasm`/`game.data` are kept as generated. Change the colours in `theme/love.css` and the loading text in `index.html` to suit the game.
+- butler can only push build channels. itch.io has no API for cover/screenshot images, so those remain a manual upload. The "This file will be played in the browser" flag must be ticked on the *web* channel upload on the edit page (once, after the first push); ticking it on the `.love` upload fails with "Failed to find index.html".
 - butler comes from https://itch.io/docs/butler/ (the Homebrew `butler` cask is an unrelated app). Run `butler login` once in a real terminal.
 
 ### Marketing assets
@@ -38,7 +47,7 @@ Notes:
 
 ### Debugging
 
-`.vscode/launch.json` uses the `lua-local` debugger. Set `LOCAL_LUA_DEBUGGER_VSCODE=1` to have `main.lua` start `lldebugger`. `.luarc.json` configures LuaLS with LuaJIT runtime and love2d types. In dev the engine also starts the lovepilot MCP bridge (`engine/dev/mcp_bridge.lua`) on port 12345; large screenshots can stall the bridge, so prefer `love.graphics.captureScreenshot("x.png")` into the save directory when the picture is noisy.
+`.vscode/launch.json` uses the `lua-local` debugger. Set `LOCAL_LUA_DEBUGGER_VSCODE=1` to have `main.lua` start `lldebugger`. `.luarc.json` configures LuaLS with the Lua 5.1 runtime (the web build's Lua, see above) and love2d types. In dev the engine also starts the lovepilot MCP bridge (`engine/dev/mcp_bridge.lua`) on port 12345; large screenshots can stall the bridge, so prefer `love.graphics.captureScreenshot("x.png")` into the save directory when the picture is noisy.
 
 ## Architecture
 

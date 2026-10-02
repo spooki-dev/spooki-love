@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, minimum-scale=1, maximum-scale=1">
+    <title>{{TITLE}}</title>
+    <link rel="stylesheet" type="text/css" href="theme/love.css">
+    <link rel="icon" type="image/png" href="theme/favicon.png">
+  </head>
+  <body>
+    <!--
+      Replaces the stock love.js page: no heading, footer or "Powered by" text,
+      just the game canvas centred on the game's black. The release script
+      copies this over the love.js output and substitutes {{TITLE}}.
+    -->
+    <canvas id="loadingCanvas" oncontextmenu="event.preventDefault()" width="1280" height="720"></canvas>
+    <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+
+    <script type="text/javascript">
+      var loadingContext = document.getElementById('loadingCanvas').getContext('2d');
+      function drawLoadingText(text) {
+        var canvas = loadingContext.canvas;
+        loadingContext.fillStyle = "#000000";
+        loadingContext.fillRect(0, 0, canvas.width, canvas.height);
+        loadingContext.font = '24px monospace';
+        loadingContext.textAlign = 'center';
+        loadingContext.fillStyle = "#c6b7be";
+        loadingContext.fillText(text, canvas.width / 2, canvas.height / 2);
+      }
+
+      window.onload = function () { window.focus(); };
+      window.onclick = function () { window.focus(); };
+
+      // Stop space and the arrow keys scrolling the embedding page.
+      window.addEventListener("keydown", function (e) {
+        if ([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
+          e.preventDefault();
+        }
+      }, false);
+
+      var Module = {
+        arguments: ["./game.love"],
+        INITIAL_MEMORY: 16777216,
+        printErr: console.error.bind(console),
+        canvas: (function () {
+          var canvas = document.getElementById('canvas');
+          canvas.addEventListener("webglcontextlost", function (e) {
+            alert('WebGL context lost. You will need to reload the page.');
+            e.preventDefault();
+          }, false);
+          return canvas;
+        })(),
+        setStatus: function (text) {
+          if (text) {
+            drawLoadingText(text);
+          } else if (Module.remainingDependencies === 0) {
+            document.getElementById('loadingCanvas').style.display = 'none';
+            document.getElementById('canvas').style.visibility = 'visible';
+          }
+        },
+        totalDependencies: 0,
+        remainingDependencies: 0,
+        monitorRunDependencies: function (left) {
+          this.remainingDependencies = left;
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Loading ' + (this.totalDependencies - left) + '/' + this.totalDependencies : 'Starting');
+        }
+      };
+      Module.setStatus('Loading');
+      window.onerror = function () {
+        Module.setStatus('Something went wrong. See the browser console.');
+        Module.setStatus = function (text) {
+          if (text) Module.printErr('[post-exception status] ' + text);
+        };
+      };
+
+      var applicationLoad = function () { Love(Module); };
+    </script>
+    <script type="text/javascript" src="game.js"></script>
+    <script async type="text/javascript" src="love.js" onload="applicationLoad(this)"></script>
+  </body>
+</html>
