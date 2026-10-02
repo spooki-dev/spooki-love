@@ -6,7 +6,6 @@ local UIBox = require "engine.ui.UIBox"
 local UIText = require "engine.ui.UIText"
 local Button = require "engine.ui.Button"
 local sceneManager = require "engine.sceneManager"
-local CRT = require "engine.shaders.CRT"
 
 ---@class Menu : Scene
 local Menu = Scene.extend(Scene)
@@ -21,14 +20,6 @@ function Menu:load()
 
   function startButton:onClick()
     sceneManager.setCurrentScene("Game")
-  end
-
-  local crtLabel = CRT.enabled and "CRT: On" or "CRT: Off"
-  local crtButton = Button("CRTToggle", crtLabel)
-
-  function crtButton:onClick()
-    CRT.enabled = not CRT.enabled
-    self.text.text = CRT.enabled and "CRT: On" or "CRT: Off"
   end
 
   self:addGameObject(UICanvas("MenuUI", {
@@ -49,7 +40,6 @@ function Menu:load()
         UIBox("MenuButtonRow", {
           UIBox("MenuButtonContainer", {
             startButton,
-            crtButton,
           }, {
             width = "40%",
             gap = 10,

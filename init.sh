@@ -239,6 +239,7 @@ replace_exact() {
 
 echo "==> Renaming \"New Game\" to \"$TITLE\""
 replace_exact conf.lua  't.window.title = "New Game"' "t.window.title = \"$TITLE_LUA\""
+replace_exact conf.lua  't.identity = "newgame"' "t.identity = \"$PKG\""
 replace_exact main.lua  'title = "New Game",'         "title = \"$TITLE_LUA\","
 replace_exact CLAUDE.md 'title = "New Game",'         "title = \"$TITLE_LUA\","
 replace_exact scenes/Menu.lua '"NEW GAME"' "\"$UPPER_LUA\""

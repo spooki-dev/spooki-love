@@ -31,7 +31,7 @@
   - `engine/ui/`: UI primitives (UIBox, UICanvas, UIStack, UIText, UIBar, BarFill, Button).
   - `engine/lib/`: Vendored third-party code (classic, hotReload, shadows).
   - `engine/dev/`: Development-only tooling (MCP bridge).
-  - `engine/shaders/`, `engine/components/`, `engine/utils/`.
+  - `engine/components/`, `engine/utils/`.
 - `main.lua`: Builds the `Game` from a config table (scenes, default scene, cursors, shaders, watch dirs).
 - `scenes/`: Game scenes.
 - `gameObjects/`: Game-specific entities and interactive objects.

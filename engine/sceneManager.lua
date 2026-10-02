@@ -3,6 +3,9 @@ local currentScene = nil
 local scenes = {}
 local sceneFunctions = {}
 
+--- Instantiate a scene from its constructor, register it under its name and run its load().
+--- @param sceneFunc function Scene constructor (not an instance)
+--- @return Scene The new scene instance
 function sceneManager.addScene(sceneFunc)
   local scene = sceneFunc()
   scenes[scene.name] = scene
@@ -10,6 +13,14 @@ function sceneManager.addScene(sceneFunc)
   if scene.load then
     scene:load()
   end
+  return scene
+end
+
+--- Get a registered scene instance by name
+--- @param name string Scene name
+--- @return Scene|nil
+function sceneManager.getScene(name)
+  return scenes[name]
 end
 
 --- Get the constructor a scene was registered with
@@ -121,7 +132,7 @@ function sceneManager.resetScene(name)
   end
 
   scenes[name] = nil
-  sceneManager.addScene(sceneFunctions[name])
+  return sceneManager.addScene(sceneFunctions[name])
 end
 
 return sceneManager

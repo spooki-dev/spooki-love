@@ -43,11 +43,11 @@ Notes:
 
 ### Scaffolding
 
-`init.sh` (repo root) copies the template into a new directory and runs a wizard (title, author, itch.io username; `--yes` and flags for non-interactive use), then rewrites every place the template says "New Game": `conf.lua`, `main.lua`, the `"NEW GAME"` / `{ "NEW", "GAME" }` / `{ "N" }` wordmark literals in `scenes/Menu.lua` and `scenes/assets/*.lua`, the `TITLE`/`PKG`/`UTI`/`AUTHOR`/`ITCH` lines in `scripts/release.sh`, this file's example config, and fresh `README.md`/`CHANGELOG.md`. Those literals are anchors: the script fails if one is missing, so renaming them in the template means updating `init.sh` too. It copies `git ls-files --cached --others --exclude-standard`, so ignored files never leak into a new game, deletes itself from the copy, and strips this section and the `init.sh` sentence in `AGENTS.md` (anchors too) since the new game has no scaffolder. `scripts/release.sh` excludes it from the `.love`.
+`init.sh` (repo root) copies the template into a new directory and runs a wizard (title, author, itch.io username; `--yes` and flags for non-interactive use), then rewrites every place the template says "New Game": `conf.lua` (window title and `t.identity`), `main.lua`, the `"NEW GAME"` / `{ "NEW", "GAME" }` / `{ "N" }` wordmark literals in `scenes/Menu.lua` and `scenes/assets/*.lua`, the `TITLE`/`PKG`/`UTI`/`AUTHOR`/`ITCH` lines in `scripts/release.sh`, this file's example config, and fresh `README.md`/`CHANGELOG.md`. Those literals are anchors: the script fails if one is missing, so renaming them in the template means updating `init.sh` too. It copies `git ls-files --cached --others --exclude-standard`, so ignored files never leak into a new game, deletes itself from the copy, and strips this section and the `init.sh` sentence in `AGENTS.md` (anchors too) since the new game has no scaffolder. `scripts/release.sh` excludes it from the `.love`.
 
 ### Marketing assets
 
-`assets/generated/*.png` are rendered by the game itself from `scenes/assets/*.lua` via `engine/AssetExporter.lua`, so a colour or font change regenerates them (and shows up as an image diff in git). The `assets` block in `main.lua` lists each item with its exact pixel size, `postProcess = true` to run the CRT chain, or `transparent = true` for an alpha background (the two are mutually exclusive, the shader forces alpha to 1). Asset scenes take `(width, height)` in their constructor, pass them to a `UICanvas` via `styles.width/height`, and compose text with `gameObjects/Wordmark.lua`, which lazily loads fonts under keys `asset-<size>` (sizes in multiples of 8 for PixelOperator8). Edit the `lines`/`subtitle` in each asset scene for your game.
+`assets/generated/*.png` are rendered by the game itself from `scenes/assets/*.lua` via `engine/AssetExporter.lua`, so a colour or font change regenerates them (and shows up as an image diff in git). The `assets` block in `main.lua` lists each item with its exact pixel size, `postProcess = true` to run the post-processing shader chain (if any shaders are configured), or `transparent = true` for an alpha background (the two are mutually exclusive, shaders force alpha to 1). Asset scenes take `(width, height)` in their constructor, pass them to a `UICanvas` via `styles.width/height`, and compose text with `gameObjects/Wordmark.lua`, which lazily loads fonts under keys `asset-<size>` (sizes in multiples of 8 for PixelOperator8). Edit the `lines`/`subtitle` in each asset scene for your game.
 
 ### Debugging
 
@@ -66,7 +66,7 @@ Game({
   scenes = { Preload, Menu, GameScene },
   defaultScene = "Menu",
   cursors = { default = { path = "assets/cursors/default.png", hotX = 8, hotY = 8 }, active = { ... } },
-  shaders = { CRT },                -- post-processing chain, in order
+  shaders = {},                     -- optional post-processing chain, in order
   watch = { "engine", "scenes", "gameObjects", "constants", "state" },
   assets = { outputDir = "assets/generated", items = { { name = "icon", scene = AssetIcon, width = 1024, height = 1024 }, ... } },
 })
@@ -81,7 +81,8 @@ Game({
 | `Game.lua` | Top-level game class built from the config table; `love.load(args)` is forwarded so `Game:hasArg("--flag")` works. Owns sceneManager, audioManager, cursorManager, inputManager, postProcessing. Wires all `love.*` callbacks. |
 | `Scene.lua` | Base scene class. Manages layers (ground/entities/ui), gameObject registry, camera, input dispatch. Objects in `ui` layer draw without camera transform. |
 | `GameObject.lua` | Base class for all entities. Handles position, rendering (sprites/quads/shapes/text), animation, mouse/keyboard events, and children. |
-| `sceneManager.lua` | Singleton. Stores scenes by name, delegates update/draw/input to the current scene. `setCurrentScene` errors if called with the already-current scene. |
+| `sceneManager.lua` | Singleton. Stores scenes by name, delegates update/draw/input to the current scene. `setCurrentScene` errors if called with the already-current scene and calls the scene's `start()` on every activation. `addScene`/`resetScene` return the instance; `getScene(name)` looks one up. |
+| `saveManager.lua` | Single-slot save file in the save directory, serialised as Lua source. `save`/`load`/`exists`/`delete` never throw; see **Saving** below. |
 | `Camera.lua` | Camera with position, zoom, bounds-based culling. |
 | `cacheManager.lua` | Preloads and caches spritesheets, images, fonts, sounds. Must be populated (see `scenes/Preload.lua`) before assets are used. |
 | `audioManager.lua` | Centralised audio: load/play sounds and music. |
@@ -90,11 +91,10 @@ Game({
 | `AssetExporter.lua` | Renders asset scenes to canvases at exact sizes and writes PNGs with plain `io` (outside the save dir). Triggered by `love . --export-assets`, which quits before any dev tooling starts. |
 | `renderer.lua` | Shared rendering utilities used by GameObject's `handleDraw`. |
 | `InputManager.lua` | Input state tracking. |
-| `State.lua` | Generic key/value state container (`state/GameState.lua` is an instance). |
+| `State.lua` | Generic key/value state container (`state/GameState.lua` is an instance). Deep-copies its initial table so `reset()` really restores the defaults. |
 | `ui/` | UI primitives: `UIBox`, `UICanvas`, `UIStack`, `UIText`, `UIBar`, `BarFill`, `Button`. |
-| `shaders/CRT.lua` | CRT post-process shader. Uniform `signalStrength` (1 = clean, 0 = full interference). |
 | `components/` | Optional mixins: `HitHurtBox`, `LightManager` (wraps the shadows lib). |
-| `utils/` | Small helpers: easing, hexcolor, intersection, noise, perlin, theta pathfinding, table serialisation. |
+| `utils/` | Small helpers: easing, hexcolor, intersection, noise, perlin, theta pathfinding, `table.deepCopy`, table serialisation (Lua 5.1 safe, deterministic). |
 | `lib/` | Vendored third-party code: `classic.lua` (rxi/classic), `hotReload.lua`, `shadows/` (Shädows light engine, unmaintained upstream; read its README before modifying). |
 | `dev/mcp_bridge.lua` | lovepilot MCP bridge, loaded via `pcall` in dev only. |
 
@@ -103,6 +103,15 @@ Game({
 - **Font keys**: `engine/ui` looks up fonts by key `body` (UIText default), `small` (Button, UIBar), plus `header`/`subheader`. Preload them in the first scene.
 - **Cursor keys**: `Button` switches between `active` and `default`. Provide both in the `cursors` config.
 - **Layer names**: `ground`, `entities`, `ui`. `ui` draws in screen space; UI objects default to it.
+- **Quit hook**: `Game:quit` calls `onQuit()` on the current scene if defined. Autosave there.
+
+### Saving
+
+`engine/saveManager.lua` keeps one save file in LÖVE's save directory as Lua source (via `engine/utils/table_serialize.lua`). API: `configure{ filename, version, migrate }`, `isAvailable()`, `exists()`, `save(data) -> ok, err`, `load() -> table|nil`, `delete()`. Every call is wrapped in `pcall`: a missing or read-only store makes `save` return false and `load` return nil, never an error. The engine never decides what to save; the game passes a plain-data table (numbers, strings, booleans, nested tables) and gets the same shape back. `save` stamps `version`; `load` rejects a different version unless a `migrate(data, fromVersion)` function is configured.
+
+Hooks: `Game:quit` calls the current scene's optional `onQuit()`, which is where a game autosaves. `sceneManager.resetScene(name)` returns the fresh instance and `getScene(name)` looks one up, so a menu can rebuild a scene and hand it loaded data before `setCurrentScene` runs its `start()`. Set `t.identity` in `conf.lua` so source runs and fused builds share one save directory.
+
+Web: love.js keeps the save directory in IndexedDB but only flushes it in its own `beforeunload` listener, and does not expose `FS` to the page, so `scripts/web/index.html` dispatches a synthetic `beforeunload` on `pagehide`, when the tab is hidden and every 10 s. Lua has no access to `localStorage`; when IndexedDB is unavailable the writes simply do not persist and the game carries on.
 
 ### OOP pattern
 
@@ -117,7 +126,7 @@ end
 ### Scenes (`scenes/`)
 
 - `Preload.lua` — preloads fonts via cacheManager. Never made current; registered first for its `load()` side effect.
-- `Menu.lua` — default scene. Start → `Game`; CRT toggle.
+- `Menu.lua` — default scene. Start → `Game`.
 - `Game.lua` — empty scene to build on.
 
 Scene names (passed to `Scene.super.new(self, "Name")`) must be unique. To add a scene, create it in `scenes/`, require it in `main.lua` and add it to the `scenes` array. See `docs/CreatingANewScene.md`.

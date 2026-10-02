@@ -277,6 +277,12 @@ function Game:focus(focused)
 end
 
 function Game:quit()
+  -- Give the current scene a chance to persist state (see Scene.onQuit). Never let a
+  -- failing hook block the quit.
+  local hookOk, hookErr = pcall(self.sceneManager.checkAndCallSceneFunction, "onQuit")
+  if not hookOk then
+    print("Scene onQuit failed: " .. tostring(hookErr))
+  end
   if not system.isWeb() then
     local x, y, display = love.window.getPosition()
     if not display then display = 1 end

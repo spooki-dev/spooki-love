@@ -24,6 +24,7 @@ local tableUtils = require "engine.utils.table"
 ---@field handleUpdate function Handle updating the scene
 ---@field handleDraw function Handle drawing the scene
 ---@field onKeyPressed function Handle key pressed events
+---@field onQuit function|nil Optional hook called by Game:quit on the current scene (autosave here)
 ---@field removeGameObject function Remove a game object from the scene
 ---@field destroyGameObject function Destroy a game object by reference or name
 local Scene = Object.extend(Object)

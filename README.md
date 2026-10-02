@@ -24,11 +24,11 @@ The wizard asks for the game title, author and itch.io username (Enter keeps the
 /Applications/love.app/Contents/MacOS/love .
 ```
 
-You get a Menu scene with a Start button that switches to an empty `Game` scene, a CRT post-processing toggle, custom cursors, hot reload on save (backtick to force), and a dev MCP bridge on port 12345.
+You get a Menu scene with a Start button that switches to an empty `Game` scene, custom cursors, hot reload on save (backtick to force), and a dev MCP bridge on port 12345.
 
 ## Make it yours
 
-1. If you did not use `init.sh`: set the window title in `conf.lua`, `title` in `main.lua` and the wordmarks in `scenes/Menu.lua` and `scenes/assets/*.lua`.
+1. If you did not use `init.sh`: set the window title and `t.identity` (save directory name) in `conf.lua`, `title` in `main.lua` and the wordmarks in `scenes/Menu.lua` and `scenes/assets/*.lua`.
 2. Add scenes under `scenes/`, require them in `main.lua` and append them to the `scenes` array. Keep `Preload` first. See `docs/CreatingANewScene.md`.
 3. Preload fonts and spritesheets in `scenes/Preload.lua`. The UI primitives expect font keys `header`, `subheader`, `body`, `small`.
 4. Put entities in `gameObjects/`, data in `constants/`, and shared state in `state/GameState.lua`.

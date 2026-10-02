@@ -75,6 +75,19 @@
       };
 
       var applicationLoad = function () { Love(Module); };
+
+      // love.js keeps the LÖVE save directory on an IndexedDB-backed filesystem but only
+      // writes it back in its own "beforeunload" listener, and it does not expose FS to this
+      // page. Dispatching a synthetic beforeunload runs that listener, so saves survive a
+      // closed tab, a backgrounded mobile browser or a crash. Harmless before love.js loads.
+      var flushSaves = function () {
+        try { window.dispatchEvent(new Event('beforeunload')); } catch (e) { /* ignore */ }
+      };
+      window.addEventListener('pagehide', flushSaves);
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') flushSaves();
+      });
+      setInterval(flushSaves, 10000);
     </script>
     <script type="text/javascript" src="game.js"></script>
     <script async type="text/javascript" src="love.js" onload="applicationLoad(this)"></script>

@@ -1,5 +1,4 @@
 local Game = require "engine.Game"
-local CRT = require "engine.shaders.CRT"
 
 local Preload = require "scenes.Preload"
 local Menu = require "scenes.Menu"
@@ -31,7 +30,6 @@ Game({
     default = { path = "assets/cursors/default.png", hotX = 8, hotY = 8 },
     active = { path = "assets/cursors/active.png", hotX = 8, hotY = 8 },
   },
-  shaders = { CRT },
   watch = { "engine", "scenes", "gameObjects", "constants", "state" },
   -- Exported to assets/generated/<name>.png; scripts/release.sh bakes icon/favicon into the builds.
   assets = {
@@ -39,9 +37,9 @@ Game({
     items = {
       { name = "icon",    scene = AssetIcon,    width = 1024, height = 1024 },
       { name = "favicon", scene = AssetFavicon, width = 64,   height = 64 },
-      { name = "cover",   scene = AssetCover,   width = 630,  height = 500,  postProcess = true },
-      { name = "social",  scene = AssetSocial,  width = 1200, height = 630,  postProcess = true },
-      { name = "wide",    scene = AssetWide,    width = 1920, height = 1080, postProcess = true },
+      { name = "cover",   scene = AssetCover,   width = 630,  height = 500 },
+      { name = "social",  scene = AssetSocial,  width = 1200, height = 630 },
+      { name = "wide",    scene = AssetWide,    width = 1920, height = 1080 },
       { name = "logo",    scene = AssetLogo,    width = 1600, height = 400,  transparent = true },
     },
   },
