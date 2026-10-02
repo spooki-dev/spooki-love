@@ -1,6 +1,6 @@
 # AGENTS.md
 
-LÖVE (Love2D) 11.5 game template in plain Lua. Desktop runs LuaJIT but the love.js web build runs PUC Lua 5.1, so code must stay within the shared 5.1 subset: no `goto`/`::label::`, no `ffi`/`jit`/`bit`, no `table.unpack`. `scripts/lint-lua51.sh` checks this with a real Lua 5.1 parser; the pre-commit hook in `.githooks/` and `scripts/release.sh` both run it. No tests, no package manager, no CI.
+LÖVE (Love2D) 11.5 game template in plain Lua. Desktop runs LuaJIT but the love.js web build runs PUC Lua 5.1, so code must stay within the shared 5.1 subset: no `goto`/`::label::`, no `ffi`/`jit`/`bit`, no `table.unpack`. `scripts/lint-lua51.sh` checks this with a real Lua 5.1 parser; the pre-commit hook in `.githooks/` and `scripts/release.sh` both run it. No tests, no package manager, no CI. `init.sh` at the root scaffolds a new game from this template (wizard for title/author/itch; it rewrites the "New Game" literals, so keep those anchors or update the script).
 
 ## Run / verify
 

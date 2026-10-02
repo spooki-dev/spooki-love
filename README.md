@@ -1,6 +1,21 @@
 # spooki-love
 
-An empty LÖVE (Love2D) 11.5 game built on a small, self-contained engine (`engine/`). Clone it, rename it, and start adding scenes.
+An empty LÖVE (Love2D) 11.5 game built on a small, self-contained engine (`engine/`). Scaffold a copy with `init.sh`, then start adding scenes.
+
+## Scaffold a new game
+
+```sh
+# from a checkout of this repo:
+./init.sh ../my-game
+
+# without a checkout:
+curl -fsSL https://raw.githubusercontent.com/spooki-dev/spooki-love/main/init.sh | bash -s my-game
+
+# or clone first and rename in place:
+git clone https://github.com/spooki-dev/spooki-love.git my-game && cd my-game && ./init.sh
+```
+
+The wizard asks for the game title, author and itch.io username (Enter keeps the default shown in brackets) and derives the slug, package name and bundle id. It rewrites the window title, the Menu and marketing wordmarks, the variables at the top of `scripts/release.sh`, and writes a fresh `README.md` and `CHANGELOG.md`. Pass `--title`, `--author`, `--itch`, `--uti` and `--yes` to skip the prompts. It leaves `git init` and `love . --export-assets` to you and prints them as next steps.
 
 ## Quick start
 
@@ -13,7 +28,7 @@ You get a Menu scene with a Start button that switches to an empty `Game` scene,
 
 ## Make it yours
 
-1. Set the window title in `conf.lua` and `title` in `main.lua`.
+1. If you did not use `init.sh`: set the window title in `conf.lua`, `title` in `main.lua` and the wordmarks in `scenes/Menu.lua` and `scenes/assets/*.lua`.
 2. Add scenes under `scenes/`, require them in `main.lua` and append them to the `scenes` array. Keep `Preload` first. See `docs/CreatingANewScene.md`.
 3. Preload fonts and spritesheets in `scenes/Preload.lua`. The UI primitives expect font keys `header`, `subheader`, `body`, `small`.
 4. Put entities in `gameObjects/`, data in `constants/`, and shared state in `state/GameState.lua`.
