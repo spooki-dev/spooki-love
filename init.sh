@@ -261,6 +261,19 @@ grep -q '^### Scaffolding$' "$DEST/CLAUDE.md" || die "expected a '### Scaffoldin
 perl -0pi -e 's/^### Scaffolding\n.*?(?=^### )//ms' "$DEST/CLAUDE.md"
 replace_exact AGENTS.md ' `init.sh` at the root scaffolds a new game from this template (wizard for title/author/itch; it rewrites the "New Game" literals, so keep those anchors or update the script).' ''
 
+# The examples catalogue and its test suite document the template, not a game.
+echo "==> Removing the examples catalogue and test suite"
+rm -rf "$DEST/examples" "$DEST/scripts/test.sh" "$DEST/.github/workflows/ci.yml"
+grep -q '^-- examples:begin$' "$DEST/main.lua" || die "expected an '-- examples:begin' block in main.lua; update init.sh to match the template"
+perl -0pi -e 's/^-- examples:begin\n.*?^-- examples:end\n\n?//ms' "$DEST/main.lua"
+grep -q '^### Examples and tests$' "$DEST/CLAUDE.md" || die "expected an '### Examples and tests' section in CLAUDE.md; update init.sh to match the template"
+perl -0pi -e 's/^### Examples and tests\n.*?(?=^### )//ms' "$DEST/CLAUDE.md"
+replace_exact CLAUDE.md ' `scripts/test.sh` runs the examples regression suite (see Examples and tests below), and CI runs it on every push.' ''
+replace_exact CLAUDE.md '`scripts/test.sh` runs the lint and the examples suite; still verify visual changes by running the game.' 'There is no test command. Verify changes by running the game.'
+replace_exact AGENTS.md ' The `examples/` catalogue doubles as the regression suite: `scripts/test.sh` runs every example headlessly and CI runs it on push (see `examples/README.md`).' ''
+replace_exact AGENTS.md '`scripts/test.sh` runs the Lua 5.1 lint and the examples suite (`scripts/test.sh camera` for one category). Still verify visual changes by running the game;' 'There is no lint or test command. Verify by running the game;'
+perl -pi -e 's{^examples/\.test-output/\n}{}' "$DEST/.gitignore"
+
 echo "==> Writing README.md and CHANGELOG.md"
 cat >"$DEST/README.md" <<README
 # $TITLE

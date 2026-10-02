@@ -1,6 +1,6 @@
 # AGENTS.md
 
-LÖVE (Love2D) 11.5 game template in plain Lua. Desktop runs LuaJIT but the love.js web build runs PUC Lua 5.1, so code must stay within the shared 5.1 subset: no `goto`/`::label::`, no `ffi`/`jit`/`bit`, no `table.unpack`. `scripts/lint-lua51.sh` checks this with a real Lua 5.1 parser; the pre-commit hook in `.githooks/` and `scripts/release.sh` both run it. No tests, no package manager, no CI. `init.sh` at the root scaffolds a new game from this template (wizard for title/author/itch; it rewrites the "New Game" literals, so keep those anchors or update the script).
+LÖVE (Love2D) 11.5 game template in plain Lua. Desktop runs LuaJIT but the love.js web build runs PUC Lua 5.1, so code must stay within the shared 5.1 subset: no `goto`/`::label::`, no `ffi`/`jit`/`bit`, no `table.unpack`. `scripts/lint-lua51.sh` checks this with a real Lua 5.1 parser; the pre-commit hook in `.githooks/` and `scripts/release.sh` both run it. No package manager. The `examples/` catalogue doubles as the regression suite: `scripts/test.sh` runs every example headlessly and CI runs it on push (see `examples/README.md`). `init.sh` at the root scaffolds a new game from this template (wizard for title/author/itch; it rewrites the "New Game" literals, so keep those anchors or update the script).
 
 ## Run / verify
 
@@ -8,7 +8,7 @@ LÖVE (Love2D) 11.5 game template in plain Lua. Desktop runs LuaJIT but the love
 /Applications/love.app/Contents/MacOS/love .   # `love` is not on PATH
 ```
 
-There is no lint or test command. Verify by running the game; saved edits under the directories listed in the `watch` config in `main.lua` hot-reload on save (backtick key force-reloads). Reload clears `package.loaded`, re-executes `main.lua` and re-runs `love.load()`, so any duplicate GameObject name will throw on reload.
+`scripts/test.sh` runs the Lua 5.1 lint and the examples suite (`scripts/test.sh camera` for one category). Still verify visual changes by running the game; saved edits under the directories listed in the `watch` config in `main.lua` hot-reload on save (backtick key force-reloads). Reload clears `package.loaded`, re-executes `main.lua` and re-runs `love.load()`, so any duplicate GameObject name will throw on reload.
 
 ## Structure & conventions
 

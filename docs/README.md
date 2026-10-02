@@ -23,3 +23,4 @@ These pages are published at https://spookidev.com/spooki-love/docs. The site pu
 | 7 | `assets.md` | Preloading, fonts, cursors, audio, marketing art export |
 | 8 | `build-and-release.md` | Lua 5.1 rules, `release.sh`, itch.io checklist |
 | 9 | `development.md` | Hot reload, MCP bridge, debugging, conventions |
+| 10 | `examples.md` | The examples catalogue: running, testing, adding an example |

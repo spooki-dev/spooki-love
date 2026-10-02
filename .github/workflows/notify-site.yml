@@ -1,12 +1,24 @@
-name: Notify site of docs changes
+name: Notify site of docs and examples changes
 
 # Tells georgebutter/site to rebuild so https://spookidev.com/spooki-love/docs
-# picks up the new markdown. Needs the SITE_DISPATCH_TOKEN secret: a personal
-# access token with Contents read/write on georgebutter/site.
+# and /spooki-love/examples pick up new markdown, examples or engine code (the
+# site bundles the engine into the examples' web build). Needs the
+# SITE_DISPATCH_TOKEN secret: a personal access token with Contents
+# read/write on georgebutter/site.
 on:
   push:
     branches: [main]
-    paths: ["docs/**"]
+    paths:
+      - "docs/**"
+      - "examples/**"
+      - "engine/**"
+      - "assets/**"
+      - "constants/**"
+      - "gameObjects/**"
+      - "scenes/**"
+      - "state/**"
+      - "main.lua"
+      - "conf.lua"
 
 jobs:
   dispatch:

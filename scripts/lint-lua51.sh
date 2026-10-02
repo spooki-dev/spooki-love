@@ -23,7 +23,10 @@ if [[ ! -x "$LUAC" ]]; then
   [[ -f "$tarball" ]] || curl -fsSL -o "$tarball" "https://www.lua.org/ftp/lua-$LUA_VERSION.tar.gz"
   tar -xzf "$tarball" -C "$CACHE"
   log="$CACHE/lua-$LUA_VERSION-build.log"
-  make -s -C "$CACHE/lua-$LUA_VERSION" macosx >"$log" 2>&1 || { cat "$log" >&2; exit 1; }
+  # macosx on Darwin; generic elsewhere (linux needs readline, which luac does not).
+  target=generic
+  [[ "$(uname -s)" == "Darwin" ]] && target=macosx
+  make -s -C "$CACHE/lua-$LUA_VERSION" "$target" >"$log" 2>&1 || { cat "$log" >&2; exit 1; }
   [[ -x "$LUAC" ]] || { echo "failed to build $LUAC" >&2; exit 1; }
 fi
 

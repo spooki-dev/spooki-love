@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-02 (examples and tests)
+
+- Examples catalogue and regression suite: 47 runnable scenes under `examples/<category>/<slug>.lua` across scenes, game objects, animation, camera, input, UI, collision, lighting, post-processing, utilities and saves. `love . --examples` opens a picker, `love . --example <id>` runs one with hot reload, and `scripts/test.sh` drives every example for 120 frames at a fixed dt with scripted input, per-example `check` assertions and golden screenshots in `examples/__snapshots__/` (also the thumbnails at https://spookidev.com/spooki-love/examples). `.github/workflows/ci.yml` runs it on push and pull request. See `examples/README.md` and `docs/examples.md`.
+- `main.lua` hands over to `examples/runner` between `-- examples:begin` / `-- examples:end`; `init.sh` strips the block and the examples tooling from scaffolded games; `scripts/release.sh` excludes `examples/`; `scripts/lint-lua51.sh` builds Lua 5.1 with the `generic` target off macOS.
+- Engine fixes found by the suite: `GameObject:destroy()` destroyed only every second child (it iterated the list each child removed itself from); `inputMap.resetToDefaults(name)` crashed for a single action (the assert message joined the list); Theta* recorded the wrong predecessor when there was no line of sight, so paths could cut through walls; the vendored Shädows library could never be required (it registered itself only as `shadows`, not `engine.lib.shadows`) and `LightWorld:GetColor` returned blue and alpha swapped; scene draw order now breaks ties on object name so equal-priority objects render in a stable order.
+- `notify-site.yml` also tells the site to rebuild when examples or engine code change.
+
 ## 2026-10-02
 
 - Documentation rewritten as nine pages under `docs/` (getting started, scenes, game objects, UI, input, engine, assets, build and release, development), each with `title`/`description`/`order` frontmatter so https://spookidev.com/spooki-love/docs can render them. The old `CreatingANewScene.md`, `UiComponents.md` and `features.md` are folded in. `.github/workflows/notify-site.yml` tells the site to rebuild when `docs/**` changes on `main` (needs the `SITE_DISPATCH_TOKEN` secret).

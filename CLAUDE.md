@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A LÖVE (Love2D) 11.5 game template written in plain Lua (LuaJIT on desktop, PUC Lua 5.1 in the love.js web build). The reusable engine lives under `engine/` and must not require anything outside it; the game is configured from `main.lua`. Input is action-based (`engine/input/`): game code reads named actions, never keys or gamepad buttons directly, so every game gets remapping, gamepad support and on-screen prompts for free (see `docs/input.md`). No tests, no build step, no package manager, no CI.
+A LÖVE (Love2D) 11.5 game template written in plain Lua (LuaJIT on desktop, PUC Lua 5.1 in the love.js web build). The reusable engine lives under `engine/` and must not require anything outside it; the game is configured from `main.lua`. Input is action-based (`engine/input/`): game code reads named actions, never keys or gamepad buttons directly, so every game gets remapping, gamepad support and on-screen prompts for free (see `docs/input.md`). No build step or package manager. `scripts/test.sh` runs the examples regression suite (see Examples and tests below), and CI runs it on every push.
 
 `docs/*.md` is published at https://spookidev.com/spooki-love/docs (the site pulls `main` at build time). Every page needs `title`, `description` and `order` frontmatter and no H1; file names are the URL slugs; link between pages as `scenes.md` and to source as repo-root paths like `engine/Scene.lua`. See `docs/README.md`.
 
@@ -15,7 +15,7 @@ A LÖVE (Love2D) 11.5 game template written in plain Lua (LuaJIT on desktop, PUC
 /Applications/love.app/Contents/MacOS/love .
 ```
 
-There is no test command. Verify changes by running the game. The one lint is `scripts/lint-lua51.sh` (see below). Hot-reload is active in dev mode — saved edits under the directories listed in the `watch` config in `main.lua` reload automatically. Backtick key force-reloads. Reload clears `package.loaded`, re-executes `main.lua` and re-runs `love.load()`, so **duplicate GameObject names will throw on reload**. `main.lua` sets `io.stdout:setvbuf("no")` so prints appear immediately when stdout is piped.
+`scripts/test.sh` runs the lint and the examples suite; still verify visual changes by running the game. The one lint is `scripts/lint-lua51.sh` (see below). Hot-reload is active in dev mode — saved edits under the directories listed in the `watch` config in `main.lua` reload automatically. Backtick key force-reloads. Reload clears `package.loaded`, re-executes `main.lua` and re-runs `love.load()`, so **duplicate GameObject names will throw on reload**. `main.lua` sets `io.stdout:setvbuf("no")` so prints appear immediately when stdout is piped.
 
 ### Lua 5.1 compatibility (web build)
 
@@ -24,6 +24,10 @@ love.js runs the game on PUC Lua 5.1, not LuaJIT, so game and engine code must s
 - `.luarc.json` sets the LuaLS runtime to `Lua 5.1`, so the editor flags these as syntax errors.
 - `scripts/lint-lua51.sh [files...]` parses files with a real `luac` 5.1 (`-p`, no execution). It builds Lua 5.1.5 from the official tarball into `~/.cache/love-release/` on first run because Homebrew no longer ships `lua@5.1`. With no arguments it checks every tracked `.lua` file.
 - `.githooks/pre-commit` runs that lint over staged Lua files. Enable it per clone with `git config core.hooksPath .githooks`. `scripts/release.sh` also runs it over the contents of the built `.love` before packaging anything.
+
+### Examples and tests
+
+`examples/<category>/<slug>.lua` are small scenes that each show one engine feature; they are published at https://spookidev.com/spooki-love/examples and double as the regression suite. `love . --examples` opens a picker, `love . --example camera/follow` runs one, and `scripts/test.sh [--update-snapshots] [ids...]` runs every example for 120 frames at a fixed dt with scripted input, its `check` assertions and a golden screenshot compared against `examples/__snapshots__/`. Each example runs in a fresh engine (`package.loaded` is purged between them). `examples/README.md` has the conventions: header comments (`-- title:`, `-- description:`), scene name = id, shared actions from `examples/runner/actions.lua`, assets preloaded by `examples/runner/preload.lua`, deterministic drawing. `main.lua` hands over to `examples/runner` between the `-- examples:begin` / `-- examples:end` anchors; `init.sh` strips the block, `examples/`, `scripts/test.sh` and `.github/workflows/ci.yml` from scaffolded games, and `scripts/release.sh` excludes `examples/` from the `.love`. When an engine change is intentional, update the affected goldens with `--update-snapshots` and review the image diff.
 
 ### Build and release
 

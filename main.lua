@@ -21,6 +21,18 @@ if os.getenv("LOCAL_LUA_DEBUGGER_VSCODE") == "1" then
   lldebugger.start()
 end
 
+-- examples:begin
+-- Examples catalogue and regression suite (examples/README.md). Runs instead of
+-- the game for `love . --examples`, `love . --example <category>/<slug>` and
+-- `love . --test`; init.sh strips this block from scaffolded games.
+if love.filesystem.getInfo("examples/runner/init.lua") then
+  local examplesRunner = require "examples.runner"
+  if examplesRunner.shouldRun(arg) then
+    return examplesRunner.main(arg)
+  end
+end
+-- examples:end
+
 Game({
   title = "New Game",
   env = "dev",

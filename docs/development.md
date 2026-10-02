@@ -4,7 +4,7 @@ description: The day-to-day loop of running the game, hot reloading, debugging w
 order: 9
 ---
 
-There are no tests, no build step and no package manager: you verify a change by running the game and looking at it. Dev mode (`env = "dev"` in `main.lua`) adds hot reload on save and a TCP bridge that lets external tooling inspect and drive the running game. This page covers that loop, the editor setup and the conventions that keep the code base consistent.
+There is no build step and no package manager. `scripts/test.sh` runs the examples regression suite (see `examples.md`); visual changes you still verify by running the game and looking at it. Dev mode (`env = "dev"` in `main.lua`) adds hot reload on save and a TCP bridge that lets external tooling inspect and drive the running game. This page covers that loop, the editor setup and the conventions that keep the code base consistent.
 
 ## Running the game
 
@@ -13,7 +13,7 @@ There are no tests, no build step and no package manager: you verify a change by
 /Applications/love.app/Contents/MacOS/love .
 ```
 
-The only lint is `scripts/lint-lua51.sh`, which checks Lua 5.1 syntax for the web build (see `build-and-release.md`). `main.lua` calls `io.stdout:setvbuf("no")` before anything else, so `print` output appears immediately when stdout is piped to a file or another process.
+`scripts/lint-lua51.sh` checks Lua 5.1 syntax for the web build (see `build-and-release.md`) and `scripts/test.sh` runs it before the examples suite. `love . --examples` opens the examples picker. `main.lua` calls `io.stdout:setvbuf("no")` before anything else, so `print` output appears immediately when stdout is piped to a file or another process.
 
 ### Window
 

@@ -43,7 +43,7 @@ Prompts read from the terminal directly so `curl ... | bash` still works. Withou
 /Applications/love.app/Contents/MacOS/love .
 ```
 
-There is no test command or build step. You verify changes by running the game. `main.lua` sets `io.stdout:setvbuf("no")`, so `print` output appears immediately when stdout is piped.
+There is no build step. `scripts/test.sh` runs the examples regression suite (see `examples.md`); you verify visual changes by running the game. `main.lua` sets `io.stdout:setvbuf("no")`, so `print` output appears immediately when stdout is piped.
 
 ## What you get out of the box
 

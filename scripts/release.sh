@@ -50,7 +50,7 @@ rm -rf "$OUT"
 mkdir -p "$OUT"
 love-release -t "$TITLE" -a "$AUTHOR" --uti "$UTI" -p "$PKG" \
   -x DEV -x .git -x releases -x designs -x docs -x .aider -x .claude -x .vscode \
-  -x engine/dev -x .md -x scripts -x assets/generated -x init.sh \
+  -x engine/dev -x .md -x scripts -x assets/generated -x init.sh -x examples \
   "$OUT" . >/dev/null
 LOVEFILE="$OUT/$TITLE.love"
 [[ -f "$LOVEFILE" ]] || { echo "love-release did not produce $LOVEFILE" >&2; exit 1; }
