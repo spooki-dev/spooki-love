@@ -12,6 +12,15 @@
 ---@field getImage fun(key: string): love.Image
 ---@field preloadSpritesheet fun(key: string, path: string, width: number, height: number, keys: table<string>): nil
 ---@field getSpritesheet fun(key: string): Spritesheet
+---@field preloadSound fun(key: string, path: string): nil
+---@field addSound fun(key: string, source: love.Source): nil
+---@field hasSound fun(key: string): boolean
+---@field getSound fun(key: string): love.Source
+---@field preloadMusic fun(key: string, path: string): nil
+---@field getMusic fun(key: string): love.Source
+---@field preloadFont fun(key: string, path: string, size: number, hinting: love.HintingMode|nil): nil
+---@field hasFont fun(key: string): boolean
+---@field getFont fun(key: string): love.Font
 ---@field getSpritePosition fun(sourceW: number, frameW: number, frameH: number, index: number): table<number>
 
 local cacheManager = {}
@@ -80,13 +89,30 @@ function cacheManager.getSpritesheet(key)
   end
 end
 
-function cacheManager.preloadSound(key, path)
+--- Registers an already-built Source (for example one synthesised with
+--- engine/utils/synth.lua) under a key.
+--- @param key string Cache key
+--- @param source love.Source The Source to cache
+function cacheManager.addSound(key, source)
   if not sounds[key] then
-    local sound = love.audio.newSource(path, "static")
-    sounds[key] = sound
+    sounds[key] = source
   else
     error("Sound already preloaded: " .. key)
   end
+end
+
+--- Loads a sound file as a static Source and caches it under a key
+--- @param key string Cache key
+--- @param path string Path to the audio file
+function cacheManager.preloadSound(key, path)
+  cacheManager.addSound(key, love.audio.newSource(path, "static"))
+end
+
+--- Whether a sound is cached under a key
+--- @param key string Cache key
+--- @return boolean
+function cacheManager.hasSound(key)
+  return sounds[key] ~= nil
 end
 
 ---Gets a sound from the cache

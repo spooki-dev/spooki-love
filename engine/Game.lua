@@ -63,6 +63,7 @@ function Game:new(config)
   self.cursors = config.cursors or {}
   self.shaders = config.shaders or {}
   self.watch = config.watch or DEFAULT_WATCH_DIRS
+  self.mcpPort = config.mcpPort
   self.assets = config.assets
   self.input = config.input
   self.args = {}
@@ -242,7 +243,8 @@ function Game:load(args)
     end
 
     if mcp_bridge then
-      mcp_bridge.init(12345)
+      -- Port: Game config mcpPort, then the LOVE_MCP_PORT environment variable, then 12345.
+      mcp_bridge.init(self.mcpPort or tonumber(os.getenv("LOVE_MCP_PORT") or "") or 12345)
       mcp_bridge.setObjectGetter(function()
         local scene = sceneManager.getCurrentSceneObject()
         return scene and scene.gameObjects or {}
@@ -266,6 +268,8 @@ function Game:update(dt)
 
   self.postProcessing:update(dt)
   self.sceneManager.update(dt)
+  -- After the scene so music parameters set this frame reach steps fired this frame.
+  self.audioManager.update(dt)
 
   -- Shader uniforms are rebuilt every frame by the current scene so that
   -- switching scenes never leaves stale values behind.

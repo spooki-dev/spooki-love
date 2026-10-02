@@ -26,7 +26,14 @@ function mcp_bridge.init(port)
         return
     end
     server = assert(socket.tcp())
-    server:bind("*", port)
+    -- Another dev game may already hold the port: say so instead of pretending to listen.
+    local bound, bindErr = server:bind("*", port)
+    if not bound then
+        print("MCP Bridge could not bind port " .. port .. " (" .. tostring(bindErr) .. "); bridge disabled. Set LOVE_MCP_PORT or Game config mcpPort to use another port.")
+        server:close()
+        server = nil
+        return
+    end
     server:listen(5)
     server:settimeout(0) -- Non-blocking
     print("MCP Bridge listening on port " .. port)

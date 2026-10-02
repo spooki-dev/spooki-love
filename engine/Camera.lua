@@ -5,6 +5,8 @@ local Vector2 = require "engine.Vector2"
 ---@field y number The y position of the cameraBounds
 ---@field zoom number The zoom level of the camera
 ---@field rotation number The rotation of the camera in radians
+---@field shakeX number Current shake offset in world units, applied only when drawing
+---@field shakeY number
 local Camera = {}
 Camera.__index = Camera
 
@@ -14,14 +16,66 @@ function Camera.new(x, y, zoom)
   self.y = y or 0
   self.zoom = zoom or 1
   self.rotation = 0
+  -- Screen shake: a random offset that decays to zero over shakeDuration.
+  self.shakeAmount = 0
+  self.shakeDuration = 0
+  self.shakeTime = 0
+  self.shakeX = 0
+  self.shakeY = 0
   return self
 end
 
+--- Starts a screen shake. A stronger shake replaces a weaker one in
+--- progress; a weaker one leaves the current shake alone.
+---@param amount number Peak offset in world units (a few pixels is plenty for pixel art)
+---@param duration number Seconds to decay back to still
+function Camera:shake(amount, duration)
+  duration = duration or 0.15
+  local remaining = self:getShakeStrength()
+  if amount >= remaining then
+    self.shakeAmount = amount
+    self.shakeDuration = duration
+    self.shakeTime = duration
+  end
+end
+
+--- Current peak offset the shake can produce, in world units.
+---@return number
+function Camera:getShakeStrength()
+  if self.shakeTime <= 0 or self.shakeDuration <= 0 then
+    return 0
+  end
+  return self.shakeAmount * (self.shakeTime / self.shakeDuration)
+end
+
+--- Advances the shake. Scenes call this every frame from Scene:handleUpdate.
+---@param dt number
+function Camera:update(dt)
+  if self.shakeTime <= 0 then
+    if self.shakeX ~= 0 or self.shakeY ~= 0 then
+      self.shakeX, self.shakeY = 0, 0
+    end
+    return
+  end
+  self.shakeTime = math.max(0, self.shakeTime - dt)
+  local strength = self:getShakeStrength()
+  self.shakeX = (love.math.random() * 2 - 1) * strength
+  self.shakeY = (love.math.random() * 2 - 1) * strength
+end
+
+--- Stops any shake immediately.
+function Camera:stopShake()
+  self.shakeTime = 0
+  self.shakeX, self.shakeY = 0, 0
+end
+
+--- Applies the camera transform. The shake offset is applied here only, so
+--- culling, mouse-to-world and worldToScreen all use the steady position.
 function Camera:set()
   love.graphics.push()
   love.graphics.rotate(-self.rotation)
   love.graphics.scale(self.zoom, self.zoom)
-  love.graphics.translate(-self.x, -self.y)
+  love.graphics.translate(-(self.x + self.shakeX), -(self.y + self.shakeY))
 end
 
 function Camera:unset()
