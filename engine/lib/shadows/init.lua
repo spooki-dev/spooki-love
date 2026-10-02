@@ -2,6 +2,10 @@ local Path = (...):gsub("%.", "/")
 local Shadows = {}
 
 package.loaded["shadows"] = Shadows
+-- The submodules were rewritten to require this module by its vendored path
+-- ("engine.lib.shadows"); register it under that name too before loading them,
+-- or the first require of the library fails with a module loop.
+package.loaded[(...)] = Shadows
 package.preload["shadows.Object"]			=	assert(love.filesystem.load(Path.."/Object.lua"))
 package.preload["shadows.Transform"]		=	assert(love.filesystem.load(Path.."/Transform.lua"))
 package.preload["shadows.LightWorld"]		=	assert(love.filesystem.load(Path.."/LightWorld.lua"))

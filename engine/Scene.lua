@@ -168,6 +168,9 @@ function Scene:handleUpdate(dt)
   if self.update then
     self:update(dt)
   end
+  if self.camera and self.camera.update then
+    self.camera:update(dt)
+  end
   -- handleUpdate all game objects
   for name, gameObject in pairs(self.gameObjects) do
     gameObject:handleUpdate(dt)
@@ -209,6 +212,11 @@ function Scene:handleDraw()
         if ay == by then
           local ap = a.drawPriority or 0
           local bp = b.drawPriority or 0
+          if ap == bp then
+            -- Final tie-break on the (unique) name so draw order is stable between
+            -- frames and runs; table.sort and pairs give no such guarantee.
+            return a.name < b.name
+          end
           return ap < bp
         end
         return ay < by
@@ -234,6 +242,9 @@ function Scene:handleDraw()
     table.sort(uiObjectsSorted, function(a, b)
       local ap = a.drawPriority or 0
       local bp = b.drawPriority or 0
+      if ap == bp then
+        return a.name < b.name
+      end
       return ap < bp
     end)
     for _, object in ipairs(uiObjectsSorted) do

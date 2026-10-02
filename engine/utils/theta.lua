@@ -68,14 +68,18 @@ function theta.findPath(grid, start, goal)
     for _, neighbor in ipairs(neighbors) do
       if grid[neighbor.y] and grid[neighbor.y][neighbor.x] ~= 1 and not closed[key(neighbor)] then
         local parent = cameFrom[key(current)] or current
-        local tentative_gScore
+        -- Theta*: reach the neighbour straight from the current node's parent when
+        -- it can see it; otherwise step from the current node (and record that).
+        local via, tentative_gScore
         if theta.lineOfSight(grid, parent.x, parent.y, neighbor.x, neighbor.y) then
+          via = parent
           tentative_gScore = gScore[key(parent)] + heuristic(parent, neighbor)
         else
+          via = current
           tentative_gScore = gScore[key(current)] + heuristic(current, neighbor)
         end
         if not gScore[key(neighbor)] or tentative_gScore < gScore[key(neighbor)] then
-          cameFrom[key(neighbor)] = parent
+          cameFrom[key(neighbor)] = via
           gScore[key(neighbor)] = tentative_gScore
           fScore[key(neighbor)] = tentative_gScore + heuristic(neighbor, goal)
           table.insert(open, { pos = neighbor, f = fScore[key(neighbor)] })

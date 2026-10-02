@@ -220,7 +220,7 @@ end
 --- Get the LightWorld color
 --- @return number, number, number, number
 function LightWorld:GetColor()
-  return self.R, self.G, self.A, self.B
+  return self.R, self.G, self.B, self.A
 end
 
 --- Set the LightWorld position

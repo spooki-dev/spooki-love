@@ -407,11 +407,13 @@ function GameObject:destroy()
   --   self.scene.rigidBodies[self] = nil
   -- end
 
-  -- Destroy all children recursively
-  for _, child in ipairs(self.gameObjects) do
+  -- Destroy all children recursively. Each child's destroy() removes it from
+  -- this list, so iterate a detached copy or every second child survives.
+  local children = self.gameObjects
+  self.gameObjects = {}
+  for _, child in ipairs(children) do
     if child.destroy then child:destroy() end
   end
-  self.gameObjects = {}
 end
 
 ---Destroy a child GameObject by reference or name

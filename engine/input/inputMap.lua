@@ -552,7 +552,11 @@ end
 --- Restores default bindings for one action, or for all when name is nil.
 --- @param name string|nil
 function inputMap.resetToDefaults(name)
-  local list = name and { assert(byName[name], "unknown action " .. tostring(name)) } or actions
+  -- Parenthesised: assert returns every argument, and the message must not join the list.
+  local list = actions
+  if name then
+    list = { (assert(byName[name], "unknown action " .. tostring(name))) }
+  end
   for _, action in ipairs(list) do
     action.bindings = {}
     for i, input in ipairs(action.defaults) do
