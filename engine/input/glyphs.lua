@@ -98,7 +98,7 @@ end
 -- Tile coordinates { col, row [, widthInTiles] } in the Kenney Input Prompts
 -- Pixel 16x packed tilemap (34 x 24 tiles, no spacing). Keyboard tiles are
 -- keyed by key constant, pad tiles by style and button, axis tiles by style
--- and "axis+"/"axis-". See docs/Input.md for how to add more.
+-- and "axis+"/"axis-". See docs/input.md for how to add more.
 local STICKS = {
   ["leftx-"] = { 12, 6 }, ["leftx+"] = { 10, 6 }, ["lefty-"] = { 9, 6 }, ["lefty+"] = { 11, 6 },
   ["rightx-"] = { 12, 8 }, ["rightx+"] = { 10, 8 }, ["righty-"] = { 9, 8 }, ["righty+"] = { 11, 8 },

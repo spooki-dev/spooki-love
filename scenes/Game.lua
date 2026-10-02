@@ -22,7 +22,7 @@ function Game:update(dt)
 
 end
 
---- Input actions arrive here (see docs/Input.md); `pause` is Escape / Start by default.
+--- Input actions arrive here (see docs/input.md); `pause` is Escape / Start by default.
 ---@param name string
 function Game:onActionPressed(name)
   if name == "pause" then

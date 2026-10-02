@@ -1,0 +1,20 @@
+name: Notify site of docs changes
+
+# Tells georgebutter/site to rebuild so https://spookidev.com/spooki-love/docs
+# picks up the new markdown. Needs the SITE_DISPATCH_TOKEN secret: a personal
+# access token with Contents read/write on georgebutter/site.
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**"]
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.SITE_DISPATCH_TOKEN }}
+          repository: georgebutter/site
+          event-type: spooki-love-docs
+          client-payload: '{"sha": "${{ github.sha }}"}'

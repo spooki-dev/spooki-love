@@ -278,7 +278,7 @@ Hot reload is on in dev: saved edits under \`engine/\`, \`scenes/\`, \`gameObjec
 
 ## Develop
 
-- Scenes live in \`scenes/\` and are registered in \`main.lua\` (\`Preload\` first). See \`docs/CreatingANewScene.md\`.
+- Scenes live in \`scenes/\` and are registered in \`main.lua\` (\`Preload\` first). See \`docs/scenes.md\`.
 - Entities go in \`gameObjects/\`, data in \`constants/\`, shared state in \`state/GameState.lua\`.
 - \`engine/\` is the shared engine. Configure it through the \`Game\` table in \`main.lua\` rather than editing it.
 - The web build runs on Lua 5.1 (love.js), so avoid \`goto\` and LuaJIT-only modules. \`scripts/lint-lua51.sh\` checks every tracked Lua file; enable the pre-commit hook with \`git config core.hooksPath .githooks\`.

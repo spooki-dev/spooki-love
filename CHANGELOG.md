@@ -2,6 +2,7 @@
 
 ## 2026-10-02
 
+- Documentation rewritten as nine pages under `docs/` (getting started, scenes, game objects, UI, input, engine, assets, build and release, development), each with `title`/`description`/`order` frontmatter so https://spookidev.com/spooki-love/docs can render them. The old `CreatingANewScene.md`, `UiComponents.md` and `features.md` are folded in. `.github/workflows/notify-site.yml` tells the site to rebuild when `docs/**` changes on `main` (needs the `SITE_DISPATCH_TOKEN` secret).
 - Action-based input (`engine/input/inputMap.lua`): named actions with keyboard, mouse and gamepad bindings, analog strength, `axis`/`vector` composition, per-frame edges and `onActionPressed`/`onActionReleased` events, single player on any device. Custom bindings persist to `bindings.lua` in the save directory.
 - Button prompts: Kenney Input Prompts Pixel 16× (CC0) in `assets/graphics/input-prompts.png`, indexed by `engine/input/glyphs.lua`; `engine/ui/InputPrompt.lua` shows an action's bindings for the active device.
 - Menus with a gamepad: `engine/ui/FocusGroup.lua` and focusable `Button`s driven by the built-in locked `ui_*` actions; the Menu is navigable and gains a Controls button.

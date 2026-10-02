@@ -1,4 +1,8 @@
-# Input: actions, bindings, prompts and rebinding
+---
+title: Input
+description: Declare named actions with keyboard, mouse and gamepad bindings, read them from game code, and get remapping and on-screen prompts for free.
+order: 5
+---
 
 The engine never asks game code to look at keys or gamepad buttons. Games declare **actions** ("jump", "move_left") with default **bindings**, read actions, and let the engine handle devices, remapping, persistence and on-screen prompts.
 

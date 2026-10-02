@@ -1,5 +1,7 @@
 # spooki-love
 
+Documentation: https://spookidev.com/spooki-love/docs (source in `docs/`).
+
 An empty LÖVE (Love2D) 11.5 game built on a small, self-contained engine (`engine/`). Scaffold a copy with `init.sh`, then start adding scenes.
 
 ## Scaffold a new game
@@ -29,11 +31,11 @@ You get a Menu scene with a Start button that switches to an empty `Game` scene,
 ## Make it yours
 
 1. If you did not use `init.sh`: set the window title and `t.identity` (save directory name) in `conf.lua`, `title` in `main.lua` and the wordmarks in `scenes/Menu.lua` and `scenes/assets/*.lua`.
-2. Add scenes under `scenes/`, require them in `main.lua` and append them to the `scenes` array. Keep `Preload` first. See `docs/CreatingANewScene.md`.
+2. Add scenes under `scenes/`, require them in `main.lua` and append them to the `scenes` array. Keep `Preload` first. See `docs/scenes.md`.
 3. Preload fonts and spritesheets in `scenes/Preload.lua`. The UI primitives expect font keys `header`, `subheader`, `body`, `small`.
 4. Put entities in `gameObjects/`, data in `constants/`, and shared state in `state/GameState.lua`.
 5. Edit the `lines`/`subtitle` in `scenes/assets/*.lua`; `love . --export-assets` regenerates the icon, favicon, cover, social, wide and logo images in `assets/generated/`.
-6. Declare input actions in the `input` block of `main.lua` and read them with `inputMap`; the Controls scene lets players remap them and `InputPrompt` shows the bindings (`docs/Input.md`).
+6. Declare input actions in the `input` block of `main.lua` and read them with `inputMap`; the Controls scene lets players remap them and `InputPrompt` shows the bindings (`docs/input.md`).
 7. Do not edit `engine/`. Anything the engine needs from the game goes through the `Game` config table in `main.lua` or a scene hook (for example `updateShaderUniforms`).
 
 See `CLAUDE.md` for the architecture and engine contracts.

@@ -1,7 +1,7 @@
 ---
 title: Assets
 description: How fonts, images, sounds and cursors are preloaded through cacheManager, and how the marketing art in assets/generated is rendered by the game itself.
-order: 6
+order: 7
 ---
 
 Every asset the game draws or plays goes through `engine/cacheManager.lua`, keyed by a short string, and must be loaded before anything asks for it. The template does that in `scenes/Preload.lua`, which is registered first in `main.lua` so its `load()` runs before any other scene builds UI. Marketing images (icon, cover, banners) are not hand-drawn: they are LÖVE scenes under `scenes/assets/` rendered to PNG by `engine/AssetExporter.lua` when you run `love . --export-assets`.

@@ -32,7 +32,7 @@ Game({
     active = { path = "assets/cursors/active.png", hotX = 8, hotY = 8 },
   },
   watch = { "engine", "scenes", "gameObjects", "constants", "state" },
-  -- Named input actions (see docs/Input.md). Each binding is one input:
+  -- Named input actions (see docs/input.md). Each binding is one input:
   -- "key:<scancode>", "mouse:<button>", "pad:<button>", "axis:<axis>+|-".
   -- The engine adds the locked ui_* menu actions itself; players remap the
   -- rest in the Controls scene and changes persist to bindings.lua.

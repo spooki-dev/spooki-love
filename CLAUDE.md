@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A LÖVE (Love2D) 11.5 game template written in plain Lua (LuaJIT on desktop, PUC Lua 5.1 in the love.js web build). The reusable engine lives under `engine/` and must not require anything outside it; the game is configured from `main.lua`. Input is action-based (`engine/input/`): game code reads named actions, never keys or gamepad buttons directly, so every game gets remapping, gamepad support and on-screen prompts for free (see `docs/Input.md`). No tests, no build step, no package manager, no CI.
+A LÖVE (Love2D) 11.5 game template written in plain Lua (LuaJIT on desktop, PUC Lua 5.1 in the love.js web build). The reusable engine lives under `engine/` and must not require anything outside it; the game is configured from `main.lua`. Input is action-based (`engine/input/`): game code reads named actions, never keys or gamepad buttons directly, so every game gets remapping, gamepad support and on-screen prompts for free (see `docs/input.md`). No tests, no build step, no package manager, no CI.
+
+`docs/*.md` is published at https://spookidev.com/spooki-love/docs (the site pulls `main` at build time). Every page needs `title`, `description` and `order` frontmatter and no H1; file names are the URL slugs; link between pages as `scenes.md` and to source as repo-root paths like `engine/Scene.lua`. See `docs/README.md`.
 
 ## Running the Game
 
@@ -136,7 +138,7 @@ end
 - `Controls.lua` — rebinding screen: every unlocked action by category with a keyboard/mouse and a gamepad cell, press-to-rebind, stolen-binding notice, reset, back. Navigable with mouse, keyboard or pad. Keep it; add your actions to `main.lua` and they appear.
 - `Controls.lua` — rebinding screen: every unlocked action by category with a keyboard/mouse and a gamepad cell, press-to-rebind, stolen-binding notice, reset, back. Navigable with mouse, keyboard or pad. Keep it; add your actions to `main.lua` and they appear.
 
-Scene names (passed to `Scene.super.new(self, "Name")`) must be unique. To add a scene, create it in `scenes/`, require it in `main.lua` and add it to the `scenes` array. See `docs/CreatingANewScene.md`.
+Scene names (passed to `Scene.super.new(self, "Name")`) must be unique. To add a scene, create it in `scenes/`, require it in `main.lua` and add it to the `scenes` array. See `docs/scenes.md`.
 
 ### GameObjects (`gameObjects/`)
 
