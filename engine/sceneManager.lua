@@ -147,6 +147,23 @@ function sceneManager.wheelMoved(x, y)
   end
 end
 
+--- A finger touched the screen this frame. `id` identifies the touch across
+--- move/release so multiple simultaneous touches (e.g. steer + throttle) can
+--- be tracked independently; forwarded only if the current scene defines it.
+function sceneManager.touchPressed(id, x, y, dx, dy, pressure)
+  sceneManager.checkAndCallSceneFunction("touchpressed", id, x, y, dx, dy, pressure)
+end
+
+--- A tracked touch moved this frame. See touchPressed.
+function sceneManager.touchMoved(id, x, y, dx, dy, pressure)
+  sceneManager.checkAndCallSceneFunction("touchmoved", id, x, y, dx, dy, pressure)
+end
+
+--- A tracked touch lifted this frame. See touchPressed.
+function sceneManager.touchReleased(id, x, y, dx, dy, pressure)
+  sceneManager.checkAndCallSceneFunction("touchreleased", id, x, y, dx, dy, pressure)
+end
+
 --- Reset and reload a scene by name
 function sceneManager.resetScene(name)
   local scene = scenes[name]
