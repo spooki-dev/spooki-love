@@ -159,14 +159,15 @@ end
 ---@return boolean True if the position was set successfully, false if it collides with another rigid body
 function GameObject:setPos(newPos)
   local newX, newY = newPos.x, newPos.y
-  if self.rigidBody then
-    local rigidBodies = (self.scene and self.scene.rigidBodies) or nil
-    local checkList = rigidBodies and (function()
-      local t = {}
-      for obj, _ in pairs(rigidBodies) do table.insert(t, obj) end
-      return t
-    end)() or (self.scene and self.scene.gameObjects) or {}
-    if not self:canMoveTo(newX, newY, checkList) then
+  if self.rigidBody and self.scene then
+    local map = self.scene.collisionMap
+    if map and self.shape then
+      -- Static geometry (a tile map) is tested first: it is cheap and rejects most blocked moves.
+      if map:isRectBlocked(newX + (self.shape.x or 0), newY + (self.shape.y or 0), self.shape.width, self.shape.height) then
+        return false
+      end
+    end
+    if not self:canMoveTo(newX, newY, self.scene.rigidBodies) then
       return false
     end
   end
@@ -216,13 +217,15 @@ function GameObject.rectsIntersect(a, b)
       a.y + a.height > b.y
 end
 
----Checks if this object can move to (newX, newY) without colliding with other rigid bodies
+---Checks if this object can move to (newX, newY) without colliding with other rigid bodies.
+---`bodies` is iterated with pairs, so it may be the scene's rigidBodies set (object -> true)
+---or an array of objects; no copy is made per call.
 ---@param newX number
 ---@param newY number
----@param allGameObjects GameObject[]
+---@param bodies table<GameObject, boolean>|GameObject[]|nil
 ---@return boolean
-function GameObject:canMoveTo(newX, newY, allGameObjects)
-  if not self.rigidBody then return true end
+function GameObject:canMoveTo(newX, newY, bodies)
+  if not self.rigidBody or not bodies then return true end
   -- Use the object's shape definition, but offset by the new position
   local futureShape = {
     x = newX + (self.shape.x or 0),
@@ -230,7 +233,8 @@ function GameObject:canMoveTo(newX, newY, allGameObjects)
     width = self.shape.width,
     height = self.shape.height
   }
-  for _, obj in ipairs(allGameObjects) do
+  for k, v in pairs(bodies) do
+    local obj = type(k) == "table" and k or v
     if obj ~= self and obj.rigidBody then
       local otherShape = obj:getShape()
       if GameObject.rectsIntersect(futureShape, otherShape) then

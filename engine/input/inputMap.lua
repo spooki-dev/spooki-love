@@ -346,6 +346,9 @@ end
 
 local function loadSaved()
   if not config.saveFile then return end
+  -- Check first: reading a missing file raises a LOVE exception internally, and
+  -- love.js cannot catch it, so the web build would abort on first run.
+  if not love.filesystem.getInfo(config.saveFile, "file") then return end
   local contents = love.filesystem.read(config.saveFile)
   if not contents then return end
   local ok, data = pcall(table_serialize.deserialize, contents)

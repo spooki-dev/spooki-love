@@ -13,6 +13,7 @@ local tableUtils = require "engine.utils.table"
 ---@field layerOrder table<{name: string, zIndex: number}>
 ---@field loaded boolean Whether the scene has been loaded
 ---@field rigidBodies table<GameObject, boolean> Track all rigid body GameObjects
+---@field collisionMap table|nil Optional static geometry: anything with isRectBlocked(x, y, w, h); rigid bodies refuse moves into it
 ---@field hitHurtBoxObjects table<string, GameObject> Track all game objects with hit/hurt box component
 ---@field mouseOverGameObjects table<string, GameObject> Track all game objects with mouseover events
 ---@field clickGameObjects table<string, GameObject> Track all gameObjects with a click event
@@ -30,7 +31,7 @@ local tableUtils = require "engine.utils.table"
 local Scene = Object.extend(Object)
 function Scene:new(name)
   self.name = name
-  self.camera = Camera.new()
+  self.camera = Camera()
   self.gameObjects = {}
   self.mouseOverGameObjects = {}
   self.clickGameObjects = {}
@@ -397,7 +398,7 @@ end
 --   self.layerOrder = {}
 --   self:addDefaultLayers()
 --   -- Reset camera
---   self.camera = Camera.new()
+--   self.camera = Camera()
 --   -- Clear rigidBodies and hitHurtBoxObjects
 --   self.rigidBodies = {}
 --   self.hitHurtBoxObjects = {}

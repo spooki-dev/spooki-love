@@ -89,7 +89,9 @@ Shadows.AberrationShader = love.graphics.newShader[[
 	extern vec2 Size;
 	
 	// Offset used for the effect
-	extern float Aberration = 2.0;
+	// No initialiser: GLSL ES 1.00 (love.js, WebGL 1) rejects "uniform x = v". The
+	// default is sent from Lua right after the shader is created.
+	extern float Aberration;
 
 	vec4 effect(vec4 col, Image texture, vec2 texturePos, vec2 screenPos){
 		
@@ -105,6 +107,7 @@ Shadows.AberrationShader = love.graphics.newShader[[
 	}
 	
 ]]
+Shadows.AberrationShader:send("Aberration", 2.0)
 
 Shadows.LightShader = love.graphics.newShader [[
 	
@@ -275,6 +278,9 @@ Shadows.HeightShader = love.graphics.newShader [[
 	// Height map texture
 	extern Image Texture;
 	
+	// Upper bound of the march, in pixels (constant so the loop compiles on WebGL 1)
+	const float MaxDistance = 1024.0;
+	
 	vec4 effect(vec4 Color, Image tex, vec2 tc, vec2 pixelCoord) {
 		
 		// Size factor
@@ -295,8 +301,10 @@ Shadows.HeightShader = love.graphics.newShader [[
 		// Distance from the light
 		float Distance = length(LightDir);
 		
-		// From the source position to the given point
-		for (float i = 0.0; i < Distance; i++) {
+		// From the source position to the given point. GLSL ES 1.00 (love.js) only
+		// allows constant loop bounds, so run to MaxDistance and break at Distance.
+		for (float i = 0.0; i < MaxDistance; i++) {
+			if (i >= Distance) { break; }
 			
 			// Calculate every point within
 			vec2 position = textureCoord + L.xy * i / Size;
@@ -340,6 +348,9 @@ Shadows.DropShadows = love.graphics.newShader [[
 	extern vec2	textureSize;
 	extern number	textureZ;
 
+	// Upper bound of lightRadius; GLSL ES 1.00 (love.js) needs a constant loop bound
+	const number	maxLightRadius	= 32.0;
+
 	vec4 effect(vec4 color, Image _t, vec2 texture_coords, vec2 screen_coords) {
 		// Calculate offset on canvas
 		number	scale		= lightPosition.z / ( lightPosition.z - textureZ );
@@ -359,8 +370,10 @@ Shadows.DropShadows = love.graphics.newShader [[
 		number	iLightRadius	= 1.0 / lightRadius;
 		
 		// For each pixel offset on the light's position
-		for (number x = -lightRadius; x < lightRadius; x++) {
-			for (number y = -lightRadius; y < lightRadius; y++) {
+		for (number x = -maxLightRadius; x < maxLightRadius; x++) {
+			if (x < -lightRadius || x >= lightRadius) { continue; }
+			for (number y = -maxLightRadius; y < maxLightRadius; y++) {
+				if (y < -lightRadius || y >= lightRadius) { continue; }
 				
 				vec2	vec		= vec2(x, y);
 				number	vecLength	= length(vec);

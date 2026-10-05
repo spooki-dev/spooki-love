@@ -1,17 +1,22 @@
 local Vector2 = require "engine.Vector2"
+local Object = require "engine.lib.classic"
 
----@class Camera
+---@class Camera : Object
 ---@field x number The x position of the cameraBounds
 ---@field y number The y position of the cameraBounds
 ---@field zoom number The zoom level of the camera
 ---@field rotation number The rotation of the camera in radians
 ---@field shakeX number Current shake offset in world units, applied only when drawing
 ---@field shakeY number
-local Camera = {}
-Camera.__index = Camera
+local Camera = Object:extend()
 
-function Camera.new(x, y, zoom)
-  local self = setmetatable({}, Camera)
+-- World units added on every side of the visible area when culling.
+local CULL_MARGIN = 32
+
+---@param x number|nil World x, default 0
+---@param y number|nil World y, default 0
+---@param zoom number|nil Default 1
+function Camera:new(x, y, zoom)
   self.x = x or 0
   self.y = y or 0
   self.zoom = zoom or 1
@@ -22,7 +27,6 @@ function Camera.new(x, y, zoom)
   self.shakeTime = 0
   self.shakeX = 0
   self.shakeY = 0
-  return self
 end
 
 --- Starts a screen shake. A stronger shake replaces a weaker one in
@@ -92,12 +96,16 @@ function Camera:setPosition(x, y)
   self.y = y
 end
 
+--- World-space rectangle the camera can see, padded by CULL_MARGIN so objects drawn
+--- partly before their position (rotation/position origins) are not culled at the edge.
+---@return {top: number, bottom: number, left: number, right: number}
 function Camera:getBounds()
+  local zoom = self.zoom or 1
   local bounds = {}
-  bounds.top = self.y
-  bounds.bottom = (self.y + love.graphics.getHeight())
-  bounds.left = self.x
-  bounds.right = (self.x + love.graphics.getWidth())
+  bounds.top = self.y - CULL_MARGIN
+  bounds.bottom = self.y + love.graphics.getHeight() / zoom + CULL_MARGIN
+  bounds.left = self.x - CULL_MARGIN
+  bounds.right = self.x + love.graphics.getWidth() / zoom + CULL_MARGIN
   return bounds
 end
 

@@ -80,9 +80,11 @@ end
 
 --- Applies all enabled shaders in sequence, then draws the result to screen.
 function PostProcessing:apply()
-  if not self.canvas then return end
+  -- When disabled nothing was captured, so the frame is already on the backbuffer;
+  -- drawing the canvas here would paint the last captured frame over it.
+  if not self.enabled or not self.canvas then return end
 
-  if not self.enabled or #self.shaders == 0 then
+  if #self.shaders == 0 then
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(self.canvas, 0, 0)
     return
