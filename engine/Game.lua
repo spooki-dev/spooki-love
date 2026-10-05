@@ -107,6 +107,18 @@ function Game:initializeEvents()
     self:wheelmoved(x, y)
   end
 
+  function love.touchpressed(id, x, y, dx, dy, pressure)
+    self:touchpressed(id, x, y, dx, dy, pressure)
+  end
+
+  function love.touchmoved(id, x, y, dx, dy, pressure)
+    self:touchmoved(id, x, y, dx, dy, pressure)
+  end
+
+  function love.touchreleased(id, x, y, dx, dy, pressure)
+    self:touchreleased(id, x, y, dx, dy, pressure)
+  end
+
   function love.keypressed(key, scancode, isrepeat)
     self:keypressed(key, scancode, isrepeat)
   end
@@ -324,6 +336,20 @@ end
 function Game:wheelmoved(x, y)
   inputMap.wheelmoved(x, y)
   self.sceneManager.wheelMoved(x, y)
+end
+
+-- Touch has no inputMap binding kind (it's screen-position-based, not a
+-- remappable button/axis), so these go straight to the scene.
+function Game:touchpressed(id, x, y, dx, dy, pressure)
+  self.sceneManager.touchPressed(id, x, y, dx, dy, pressure)
+end
+
+function Game:touchmoved(id, x, y, dx, dy, pressure)
+  self.sceneManager.touchMoved(id, x, y, dx, dy, pressure)
+end
+
+function Game:touchreleased(id, x, y, dx, dy, pressure)
+  self.sceneManager.touchReleased(id, x, y, dx, dy, pressure)
 end
 
 function Game:keypressed(key, scancode, isrepeat)
