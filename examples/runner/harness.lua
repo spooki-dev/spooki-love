@@ -63,7 +63,7 @@ end
 ---@param ctors table Scene constructors to register after the preload scene
 ---@param defaultScene string
 ---@param shaderDefs table[]|nil
----@param opts { dev: boolean }|nil dev enables hot reload (desktop only)
+---@param opts { dev: boolean, test: boolean }|nil dev enables hot reload (desktop only); test forces the deterministic device backend
 ---@return Game
 function M.buildGame(ctors, defaultScene, shaderDefs, opts)
   opts = opts or {}
@@ -85,10 +85,12 @@ function M.buildGame(ctors, defaultScene, shaderDefs, opts)
     -- Never persist bindings: the rebinding example would otherwise change
     -- every other example's controls on the next run.
     input = { deadzone = actions.deadzone, actions = actions.actions, saveFile = false },
-    -- Always the deterministic device backend: the catalogue is the regression
-    -- suite, so no example may depend on a real camera, a real picker or a
-    -- player's files. Run the game itself to exercise the real ones.
-    device = { backend = "mock" },
+    -- Under --test the device backend is the deterministic mock, because the
+    -- catalogue is also the regression suite and no golden may depend on a real
+    -- camera, a real picker or a player's files. Run interactively (including
+    -- the published web catalogue) and it is nil, so the real backend for the
+    -- platform is selected and the device examples show the actual device.
+    device = { backend = opts.test and "mock" or nil },
     shaders = shaderDefs or {},
   })
   return M.game

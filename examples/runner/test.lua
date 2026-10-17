@@ -81,7 +81,7 @@ local function runOne(entry, opts)
     end
     local frames = Example.frames or M.DEFAULT_FRAMES
     result.frames = frames
-    local game = harness.buildGame({ harness.wrapExample(entry) }, entry.id, harness.shadersFor(Example), { dev = false })
+    local game = harness.buildGame({ harness.wrapExample(entry) }, entry.id, harness.shadersFor(Example), { dev = false, test = true })
     love.load({})
     local scene = game.sceneManager.getCurrentSceneObject()
     assert(scene and scene.name == entry.id, "example scene did not become current")
