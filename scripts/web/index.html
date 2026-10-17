@@ -40,7 +40,10 @@
 
       var Module = {
         arguments: ["./game.love"],
-        INITIAL_MEMORY: 16777216,
+        // 32 MiB: the device camera holds a frame buffer and its decoded copy,
+        // and growing the heap later copies the whole thing, which shows up as
+        // a hitch.
+        INITIAL_MEMORY: 33554432,
         printErr: console.error.bind(console),
         canvas: (function () {
           var canvas = document.getElementById('canvas');
@@ -64,7 +67,13 @@
           this.remainingDependencies = left;
           this.totalDependencies = Math.max(this.totalDependencies, left);
           Module.setStatus(left ? 'Loading ' + (this.totalDependencies - left) + '/' + this.totalDependencies : 'Starting');
-        }
+        },
+        // /dev and the rest of the filesystem only exist once the runtime has
+        // initialised, so the device bridge cannot be set up in preRun.
+        onRuntimeInitialized: function () { Spooki.attach(Module); },
+        // The fallback half of the Lua-to-JS channel; everything else prints
+        // exactly as it did before.
+        print: function (line) { if (!Spooki.sniff(line)) { console.log(line); } }
       };
       Module.setStatus('Loading');
       window.onerror = function () {
@@ -88,6 +97,335 @@
         if (document.visibilityState === 'hidden') flushSaves();
       });
       setInterval(flushSaves, 10000);
+    </script>
+    <script type="text/javascript">
+      // The page half of engine/device/webBridge.lua: the file picker and the
+      // camera for the love.js build. The runtime has no video capture and no
+      // way to open a dialog, so all of it happens here and Lua only sends
+      // commands and reads back bytes.
+      //
+      // Lua -> JS is the character device /dev/spooki, whose write callback
+      // runs here once per byte. JS -> Lua is files under /tmp/spooki/ written
+      // with FS_createDataFile. /tmp and not the save directory on purpose:
+      // the save directory is the IDBFS mount and flushSaves below would copy
+      // every camera frame into IndexedDB.
+      //
+      // Keep the two-brace sequence out of this file: scripts/release.sh fails
+      // the build when the page still contains an unsubstituted placeholder.
+      var Spooki = (function () {
+        var DIR = "/tmp/spooki";
+        var MAX_EVENT_LINES = 16;
+
+        var M = null, nodes = {}, lines = [], seq = 0, attached = false;
+        var input = null, overlay = null, overlayText = null, armed = null;
+        var video = null, grabCanvas = null, grabCtx = null, stream = null;
+        var camId = 0, camW = 0, camH = 0, camSeq = 0, camTimer = null;
+        var pickId = 0;
+
+        var encoder = new TextEncoder();
+        var decoder = new TextDecoder();
+
+        function esc(value) {
+          var bytes = encoder.encode(String(value)), out = "", i, b;
+          for (i = 0; i < bytes.length; i++) {
+            b = bytes[i];
+            var plain = (b >= 48 && b <= 57) || (b >= 65 && b <= 90) ||
+                        (b >= 97 && b <= 122) || b === 46 || b === 45 || b === 95;
+            out += plain ? String.fromCharCode(b)
+                         : "%" + (b < 16 ? "0" : "") + b.toString(16).toUpperCase();
+          }
+          return out;
+        }
+
+        function unesc(value) {
+          var bytes = [], i;
+          for (i = 0; i < value.length; i++) {
+            if (value.charAt(i) === "%") {
+              bytes.push(parseInt(value.substr(i + 1, 2), 16));
+              i += 2;
+            } else {
+              bytes.push(value.charCodeAt(i) & 0xff);
+            }
+          }
+          return decoder.decode(new Uint8Array(bytes));
+        }
+
+        // Overwrites the node in place when we still hold one, so a camera
+        // frame costs no filesystem bookkeeping; otherwise recreate it.
+        function setFile(name, bytes) {
+          var node = nodes[name];
+          if (node && node.contents !== undefined) {
+            node.contents = bytes;
+            node.usedBytes = bytes.length;
+            return;
+          }
+          try { M.FS_unlink(DIR + "/" + name); } catch (e) { /* first write */ }
+          nodes[name] = M.FS_createDataFile(DIR, name, bytes, true, true, true);
+        }
+
+        function post(fields) {
+          seq += 1;
+          var parts = ["seq=" + seq], key;
+          for (key in fields) {
+            if (Object.prototype.hasOwnProperty.call(fields, key) && fields[key] !== undefined) {
+              parts.push(key + "=" + esc(fields[key]));
+            }
+          }
+          lines.push(parts.join(" "));
+          while (lines.length > MAX_EVENT_LINES) { lines.shift(); }
+          setFile("events", encoder.encode(lines.join("\n") + "\n"));
+        }
+
+        // Browsers refuse to open a dialog or grant a camera outside a real
+        // user activation, and a command from Lua arrives inside the wasm main
+        // loop, which is not one. So requests are armed and this overlay turns
+        // the player's tap into the activation.
+        function arm(text, action, id) {
+          armed = action;
+          overlayText.textContent = text;
+          overlay.classList.add("armed");
+          post({ kind: "state", id: id, state: "awaitingGesture" });
+        }
+
+        function disarm() {
+          armed = null;
+          overlay.classList.remove("armed");
+        }
+
+        function onOverlayClick() {
+          var action = armed;
+          disarm();
+          if (action) { action(); }
+        }
+
+        function onFileChosen() {
+          var files = input.files;
+          if (!files || files.length === 0) {
+            post({ kind: "cancelled", id: pickId });
+            return;
+          }
+          var file = files[0];
+          var reader = new FileReader();
+          reader.onload = function () {
+            var bytes = new Uint8Array(reader.result);
+            var blob = "blob-" + pickId + ".bin";
+            setFile(blob, bytes);
+            post({
+              kind: "picked", id: pickId, name: file.name,
+              mime: file.type || "", blob: blob, size: bytes.length
+            });
+            input.value = "";
+          };
+          reader.onerror = function () {
+            post({ kind: "error", id: pickId, err: "the file could not be read" });
+            input.value = "";
+          };
+          reader.readAsArrayBuffer(file);
+        }
+
+        function grabFrame() {
+          if (!stream || !video || video.readyState < 2) { return; }
+          grabCtx.drawImage(video, 0, 0, camW, camH);
+          var data = grabCtx.getImageData(0, 0, camW, camH).data;
+          // A view, not a copy: getImageData already allocated this buffer.
+          setFile("cam.rgba", new Uint8Array(data.buffer, data.byteOffset, data.length));
+          camSeq += 1;
+          setFile("cam.hdr", encoder.encode(camSeq + " " + camW + " " + camH + "\n"));
+        }
+
+        function stopCamera() {
+          if (camTimer) { clearInterval(camTimer); camTimer = null; }
+          if (stream) {
+            stream.getTracks().forEach(function (track) { track.stop(); });
+            stream = null;
+          }
+          if (video) { video.srcObject = null; }
+        }
+
+        function startCamera(id, w, h, fps, facing) {
+          camId = id; camW = w; camH = h; camSeq = 0;
+          grabCanvas.width = w;
+          grabCanvas.height = h;
+          var constraints = {
+            audio: false,
+            video: {
+              width: { ideal: w },
+              height: { ideal: h },
+              facingMode: facing === "front" ? "user" : "environment"
+            }
+          };
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            post({ kind: "camerror", id: id, err: "this browser has no camera API" });
+            return;
+          }
+          navigator.mediaDevices.getUserMedia(constraints).then(function (media) {
+            stream = media;
+            video.srcObject = media;
+            return video.play();
+          }).then(function () {
+            camTimer = setInterval(grabFrame, Math.max(1, Math.round(1000 / fps)));
+            post({ kind: "camstarted", id: id });
+          })["catch"](function (err) {
+            var name = (err && err.name) || "";
+            var denied = name === "NotAllowedError" || name === "SecurityError";
+            post({
+              kind: denied ? "camdenied" : "camerror",
+              id: id,
+              err: (err && err.message) || name || "the camera could not be opened"
+            });
+          });
+        }
+
+        // A still at the camera's own resolution rather than the preview's.
+        function captureStill(id) {
+          if (!stream || !video || video.readyState < 2) {
+            post({ kind: "error", id: id, err: "the camera is not running" });
+            return;
+          }
+          var w = video.videoWidth || camW, h = video.videoHeight || camH;
+          var still = document.createElement("canvas");
+          still.width = w;
+          still.height = h;
+          still.getContext("2d").drawImage(video, 0, 0, w, h);
+          still.toBlob(function (blob) {
+            if (!blob) {
+              post({ kind: "error", id: id, err: "the still could not be encoded" });
+              return;
+            }
+            var reader = new FileReader();
+            reader.onload = function () {
+              var bytes = new Uint8Array(reader.result);
+              var name = "blob-" + id + ".bin";
+              setFile(name, bytes);
+              post({
+                kind: "still", id: id, name: "camera.png",
+                mime: "image/png", blob: name, size: bytes.length
+              });
+            };
+            reader.readAsArrayBuffer(blob);
+          }, "image/png");
+        }
+
+        function onCommand(line) {
+          var parts = line.split(/\s+/);
+          var command = parts.shift();
+          var fields = {}, i, eq;
+          for (i = 0; i < parts.length; i++) {
+            eq = parts[i].indexOf("=");
+            if (eq > 0) { fields[parts[i].slice(0, eq)] = unesc(parts[i].slice(eq + 1)); }
+          }
+
+          if (command === "pick") {
+            pickId = parseInt(fields.id, 10) || 0;
+            input.accept = fields.accept || "";
+            input.multiple = fields.multiple === "1";
+            if (fields.source === "camera") {
+              input.setAttribute("capture", "environment");
+            } else {
+              input.removeAttribute("capture");
+            }
+            arm("Tap to choose a file", function () { input.click(); }, pickId);
+          } else if (command === "cancelpick") {
+            disarm();
+          } else if (command === "camstart") {
+            var id = parseInt(fields.id, 10) || 0;
+            var w = parseInt(fields.w, 10) || 320;
+            var h = parseInt(fields.h, 10) || 240;
+            var fps = parseInt(fields.fps, 10) || 15;
+            var facing = fields.facing || "back";
+            arm("Tap to start the camera", function () {
+              startCamera(id, w, h, fps, facing);
+            }, id);
+          } else if (command === "camstop") {
+            disarm();
+            stopCamera();
+          } else if (command === "camstill") {
+            captureStill(parseInt(fields.id, 10) || 0);
+          }
+        }
+
+        function buildDom() {
+          input = document.createElement("input");
+          input.type = "file";
+          input.id = "spookiInput";
+          document.body.appendChild(input);
+          input.addEventListener("change", onFileChosen);
+          // Supported in newer browsers; where it is not, a dismissed dialog
+          // simply leaves the pick open until the player tries again.
+          input.addEventListener("cancel", function () {
+            post({ kind: "cancelled", id: pickId });
+          });
+
+          video = document.createElement("video");
+          video.id = "spookiVideo";
+          video.muted = true;
+          video.autoplay = true;
+          video.setAttribute("playsinline", "");
+          video.setAttribute("muted", "");
+          document.body.appendChild(video);
+
+          grabCanvas = document.createElement("canvas");
+          grabCtx = grabCanvas.getContext("2d", { willReadFrequently: true });
+
+          overlay = document.createElement("div");
+          overlay.id = "gesture";
+          overlayText = document.createElement("div");
+          overlay.appendChild(overlayText);
+          document.body.appendChild(overlay);
+          overlay.addEventListener("click", onOverlayClick);
+
+          // iOS Safari suspends a stream when the tab is hidden; tell Lua
+          // rather than letting it draw a frozen frame forever.
+          document.addEventListener("visibilitychange", function () {
+            if (document.visibilityState === "hidden" && stream) {
+              stopCamera();
+              post({ kind: "camerror", id: camId, err: "the camera stopped when the page was hidden" });
+            }
+          });
+        }
+
+        return {
+          attach: function (module) {
+            if (attached) { return; }
+            attached = true;
+            M = module;
+            try {
+              M.FS_createPath("/", "tmp", true, true);
+              M.FS_createPath("/tmp", "spooki", true, true);
+            } catch (e) { /* /tmp usually exists already */ }
+
+            buildDom();
+
+            var buffer = "";
+            try {
+              M.FS_createDevice("/dev", "spooki", null, function (code) {
+                if (code === null || code === 10) {
+                  var line = buffer;
+                  buffer = "";
+                  if (line) { onCommand(line); }
+                } else {
+                  buffer += String.fromCharCode(code);
+                }
+              });
+            } catch (e) {
+              console.warn("spooki: no character device, using the print channel", e);
+            }
+
+            // Writing the events file is the handshake: Lua treats it existing
+            // as "the page is here".
+            post({ kind: "ready" });
+          },
+
+          // The fallback channel, read from Module.print. Returns true when the
+          // line was ours and should not reach the console.
+          sniff: function (line) {
+            if (typeof line !== "string") { return false; }
+            if (line.charCodeAt(0) !== 1 || line.slice(1, 8) !== "spooki ") { return false; }
+            if (attached) { onCommand(line.slice(8)); }
+            return true;
+          }
+        };
+      })();
     </script>
     <script type="text/javascript" src="game.js"></script>
     <script async type="text/javascript" src="love.js" onload="applicationLoad(this)"></script>

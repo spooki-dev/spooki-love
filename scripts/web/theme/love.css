@@ -26,3 +26,37 @@ body {
 #canvas {
   visibility: hidden;
 }
+
+/* Armed picker / camera overlay. Browsers will not open a file dialog or grant
+   a camera except from a real user activation, so a request from the game is
+   armed and this turns the player's tap into one. position:fixed keeps it out
+   of the body's flex centring, and sitting above the canvas means the arming
+   tap never also reaches the game. */
+#gesture {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.72);
+  color: #c6b7be;
+  font: 24px monospace;
+  text-align: center;
+  cursor: pointer;
+}
+#gesture.armed { display: flex; }
+
+/* The capture video has to stay in the layout tree, because display:none stops
+   playback in Safari, but must not be seen or clicked. The file input is only
+   ever opened from script. */
+#spookiVideo {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+#spookiInput { display: none; }

@@ -30,6 +30,8 @@ The script runs `scripts/lint-lua51.sh` first, then `love . --test`. Every examp
 ## Adding an example
 
 1. Create `examples/<category>/<slug>.lua` in an existing category (or add a line to `examples/categories.lua` for a new one).
+
+   The `device` category is a special case: those examples run against the deterministic `mock` device backend, which the harness forces for every example so nothing in the suite can depend on a real camera, a real picker or a player's files. See `device.md#testing`.
 2. Start the file with the header the catalogue and the website read:
 
    ```lua

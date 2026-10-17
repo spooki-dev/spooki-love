@@ -10,6 +10,9 @@ local cursorManager = require "engine.cursorManager"
 local inputMap = require "engine.input.inputMap"
 local PostProcessing = require "engine.PostProcessing"
 local AssetExporter = require "engine.AssetExporter"
+local deviceBackends = require "engine.device.backends"
+local filePicker = require "engine.device.filePicker"
+local deviceCamera = require "engine.device.camera"
 
 local DEFAULT_WATCH_DIRS = { "engine", "scenes", "gameObjects", "constants" }
 
@@ -28,6 +31,12 @@ local DEFAULT_WATCH_DIRS = { "engine", "scenes", "gameObjects", "constants" }
 ---@field watch table|nil Directories watched by hot reload in dev (defaults to engine, scenes, gameObjects, constants)
 ---@field assets AssetConfig|nil Marketing assets rendered by `love . --export-assets` (see engine/AssetExporter.lua)
 ---@field input InputConfig|nil Named input actions and their default bindings (see engine/input/inputMap.lua)
+---@field device DeviceConfig|nil File picker and camera defaults (see engine/device/filePicker.lua)
+
+---@class DeviceConfig
+---@field filePicker FilePickerConfig|nil Defaults for engine/device/filePicker.lua
+---@field camera DeviceCameraConfig|nil Defaults for engine/device/camera.lua
+---@field backend string|nil Force a backend: "null", "mock", "web", "desktop" or "mobile". nil picks from the OS; the examples suite passes "mock".
 
 ---@class InputConfig
 ---@field actions table Array of { name, label, category, bindings = { "key:space", "pad:a", ... } }
@@ -43,10 +52,13 @@ local DEFAULT_WATCH_DIRS = { "engine", "scenes", "gameObjects", "constants" }
 ---@field shaders table
 ---@field watch table
 ---@field assets AssetConfig|nil
+---@field device DeviceConfig|nil
 ---@field args table Command-line arguments passed to love.load
 ---@field sceneManager table The scene manager
 ---@field audioManager table the audio manager
 ---@field cursorManager table cursor manager
+---@field filePicker table the device file picker
+---@field deviceCamera table the device camera
 local Game = Object:extend()
 
 ---@param config GameConfig
@@ -66,11 +78,14 @@ function Game:new(config)
   self.mcpPort = config.mcpPort
   self.assets = config.assets
   self.input = config.input
+  self.device = config.device
   self.args = {}
   self.sceneManager = sceneManager
   self.audioManager = audioManager
   self.cursorManager = cursorManager
   self.inputManager = inputMap
+  self.filePicker = filePicker
+  self.deviceCamera = deviceCamera
   self.postProcessing = PostProcessing()
 
   self:initializeEvents()
@@ -139,6 +154,14 @@ function Game:initializeEvents()
     self:gamepadaxis(joystick, axis, value)
   end
 
+  function love.filedropped(file)
+    self:filedropped(file)
+  end
+
+  function love.threaderror(thread, errorstring)
+    self:threaderror(thread, errorstring)
+  end
+
   function love.joystickadded(joystick)
     inputMap.joystickadded(joystick)
   end
@@ -155,8 +178,11 @@ function Game:initializeEvents()
     self:resize(w, h)
   end
 
+  -- The return value matters: a truthy result aborts the quit. Game:quit uses
+  -- that on the web build, where a synthetic beforeunload is the save-flush
+  -- mechanism rather than a real quit.
   function love.quit()
-    self:quit()
+    return self:quit()
   end
 end
 
@@ -225,6 +251,14 @@ function Game:load(args)
     })
   end
 
+  -- Device backends are chosen before scenes load, for the same reason input
+  -- is: a scene's load() may ask whether a picker or a camera exists in order
+  -- to decide what UI to build.
+  local device = self.device or {}
+  deviceBackends.init(device.backend)
+  filePicker.configure(device.filePicker)
+  deviceCamera.configure(device.camera)
+
   for _, SceneConstructor in ipairs(self.scenes) do
     self.sceneManager.addScene(SceneConstructor)
   end
@@ -278,6 +312,11 @@ function Game:update(dt)
     self.sceneManager.actionReleased(released[i])
   end
 
+  -- Device results land before the scene updates, so a scene that reads
+  -- getTexture() or acts on a picked file sees this frame's value.
+  filePicker.update(dt)
+  deviceCamera.update(dt)
+
   self.postProcessing:update(dt)
   self.sceneManager.update(dt)
   -- After the scene so music parameters set this frame reach steps fired this frame.
@@ -299,6 +338,25 @@ function Game:update(dt)
     hotReload.update()
     if mcp_bridge then mcp_bridge.update() end
   end
+end
+
+--- A file was dropped on the window. The device file picker gets first refusal
+--- (a drop can answer an open pick), then the scene's optional `filedropped`.
+--- @param file love.DroppedFile The dropped file
+function Game:filedropped(file)
+  if filePicker.filedropped(file) then return end
+  self.sceneManager.checkAndCallSceneFunction("filedropped", file)
+end
+
+--- A thread died. Offered to the device modules so a dead worker fails the
+--- request it was serving instead of leaving it waiting forever; anything else
+--- is printed, because an unreported thread error is otherwise silent.
+--- @param thread love.Thread The thread that errored
+--- @param errorstring string The error it died with
+function Game:threaderror(thread, errorstring)
+  if filePicker.threaderror(thread, errorstring) then return end
+  if deviceCamera.threaderror(thread, errorstring) then return end
+  print("Thread error: " .. tostring(errorstring))
 end
 
 function Game:draw()
@@ -394,6 +452,22 @@ function Game:quit()
     if not display then display = 1 end
     love.filesystem.write("windowpos.txt", string.format("%d,%d,%d", display, x, y))
   end
+  -- On the web build this is not a quit at all. scripts/web/index.html
+  -- dispatches a synthetic `beforeunload` on a timer to force love.js to flush
+  -- the IndexedDB-backed save directory, and LÖVE answers it by running this
+  -- hook. Returning a falsy value lets the quit proceed, which ends the main
+  -- loop and freezes the game a few seconds after it loads; returning true
+  -- aborts it. The flush itself is love.js's own beforeunload listener and
+  -- happens either way, and when the page really does go away the browser
+  -- tears everything down regardless, so nothing is leaked by refusing here.
+  -- The scene's onQuit above still runs, which is the autosave that flush
+  -- exists to persist.
+  if system.isWeb() then return true end
+
+  -- Releases the preview texture and closes the devices, which on desktop also
+  -- ends any worker thread; a camera left open outlives the window.
+  pcall(filePicker.shutdown)
+  pcall(deviceCamera.shutdown)
   if mcp_bridge then mcp_bridge.shutdown() end
   print("Goodbye!")
 end

@@ -13,4 +13,5 @@ return {
   { id = "post-processing",  title = "Post-processing",  description = "Full-screen shaders and shader chains." },
   { id = "utils",            title = "Utilities",        description = "Perlin noise, pathfinding, colours, vectors and serialisation." },
   { id = "state-and-saves",  title = "State and saves",  description = "The State container and the save manager." },
+  { id = "device",           title = "Device",           description = "Importing a file from the device, and the camera." },
 }

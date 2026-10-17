@@ -24,3 +24,4 @@ These pages are published at https://spookidev.com/spooki-love/docs. The site pu
 | 8 | `build-and-release.md` | Lua 5.1 rules, `release.sh`, itch.io checklist |
 | 9 | `development.md` | Hot reload, MCP bridge, debugging, conventions |
 | 10 | `examples.md` | The examples catalogue: running, testing, adding an example |
+| 11 | `device.md` | File picker and device camera, capabilities and backends |

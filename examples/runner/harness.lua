@@ -85,6 +85,10 @@ function M.buildGame(ctors, defaultScene, shaderDefs, opts)
     -- Never persist bindings: the rebinding example would otherwise change
     -- every other example's controls on the next run.
     input = { deadzone = actions.deadzone, actions = actions.actions, saveFile = false },
+    -- Always the deterministic device backend: the catalogue is the regression
+    -- suite, so no example may depend on a real camera, a real picker or a
+    -- player's files. Run the game itself to exercise the real ones.
+    device = { backend = "mock" },
     shaders = shaderDefs or {},
   })
   return M.game

@@ -125,6 +125,13 @@ TITLE="$TITLE" perl -pi -e 's/\{\{TITLE\}\}/$ENV{TITLE}/g' "$OUT/web/index.html"
 cp "$GEN/favicon.png" "$OUT/web/theme/favicon.png"
 grep -q 'theme/favicon.png' "$OUT/web/index.html" || { echo "favicon link missing from web page" >&2; exit 1; }
 grep -q '{{' "$OUT/web/index.html" && { echo "unsubstituted placeholder in web page" >&2; exit 1; }
+# The device bridge (file picker and camera) is built from two things love.js
+# happens to export. If an upgrade drops either, fail the build here rather than
+# shipping a page where both features silently do nothing. docs/device.md has
+# the fallback.
+grep -q 'FS_createDevice' "$OUT/web/index.html" || { echo "device bridge missing from web page" >&2; exit 1; }
+grep -q 'FS_createDevice' "$OUT/web/love.js" || { echo "love.js no longer exports FS_createDevice; see docs/device.md" >&2; exit 1; }
+grep -q 'FS_createDataFile' "$OUT/web/love.js" || { echo "love.js no longer exports FS_createDataFile; see docs/device.md" >&2; exit 1; }
 
 # butler unpacks zip uploads, and a .love is a zip, so push it from a folder.
 mkdir -p "$OUT/love"

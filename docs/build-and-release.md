@@ -124,3 +124,24 @@ butler can only push build channels, and itch.io has no API for page images, so 
 4. Upload screenshots under Edit game, Screenshots. The script's message suggests keeping them in `assets/screenshots/`.
 
 First release only, on the edit page: tick "This file will be played in the browser" on the **web** channel upload, set its viewport to 1280x720, and set the page kind to HTML. Ticking the flag on the `.love` upload fails with "Failed to find index.html". Run `butler login` once in a real terminal before the first push.
+
+## The web page and the device bridge
+
+`scripts/web/index.html` carries the page half of the device file picker and
+camera (see `device.md`). Three things there are load-bearing:
+
+- **The synthetic `beforeunload`.** love.js only writes the IndexedDB-backed
+  save directory in its own `beforeunload` listener, so the page dispatches one
+  on `pagehide`, on tab hide and every ten seconds. LÖVE answers it by running
+  `love.quit`, and a falsy return there **ends the main loop** — which froze the
+  web build a few seconds after it loaded. `Game:quit` returns true on web to
+  refuse, and `love.quit` passes that return value through. Keep both halves if
+  you touch either.
+- **`INITIAL_MEMORY` is 32 MiB**, not love.js's default 16, because the camera
+  holds a frame buffer and its decoded copy and growing the heap copies
+  everything.
+- **The build guards.** `scripts/release.sh` fails if the page lost the bridge,
+  or if the love.js output stopped exporting `FS_createDevice` or
+  `FS_createDataFile`. The toolchain is pinned at `love.js@11.4.1` (the
+  Davidobot fork); the bridge is built on what that build happens to export, so
+  check the guards before upgrading it.

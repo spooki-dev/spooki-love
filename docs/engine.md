@@ -50,12 +50,13 @@ Game({
 | `watch` | array of directories | no | Hot-reload watch list in dev. Defaults to `engine`, `scenes`, `gameObjects`, `constants`. |
 | `input` | `{ actions, deadzone, saveFile }` | no | Named input actions and default bindings. `deadzone` defaults to 0.25; `saveFile` defaults to `"bindings.lua"`, `false` disables saving. See `input.md`. |
 | `assets` | `{ outputDir, items }` | no | Marketing art rendered by `love . --export-assets`. Each item is `{ name, scene, width, height, transparent, postProcess }`. See `assets.md`. |
+| `device` | `{ filePicker, camera, backend }` | no | Defaults for the file picker and the device camera, and an optional forced backend (`"mock"` in tests). See `device.md`. |
 
 `Game:new` asserts on `title`, `scenes` and `defaultScene` and stores the rest with defaults. No other fields are read.
 
 ## What Game.lua does
 
-`engine/Game.lua` is a `classic` class. Its constructor stores the config, grabs the singletons (`sceneManager`, `audioManager`, `cursorManager`, `inputMap` as `inputManager`) and a fresh `PostProcessing()`, then `initializeEvents` defines every `love.*` callback: `load`, `update`, `draw`, `mousepressed`, `mousereleased`, `mousemoved`, `wheelmoved`, `keypressed`, `keyreleased`, `gamepadpressed`, `gamepadreleased`, `gamepadaxis`, `joystickadded`, `joystickremoved`, `focus`, `resize` and `quit`.
+`engine/Game.lua` is a `classic` class. Its constructor stores the config, grabs the singletons (`sceneManager`, `audioManager`, `cursorManager`, `inputMap` as `inputManager`) and a fresh `PostProcessing()`, then `initializeEvents` defines every `love.*` callback: `load`, `update`, `draw`, `mousepressed`, `mousereleased`, `mousemoved`, `wheelmoved`, `keypressed`, `keyreleased`, `gamepadpressed`, `gamepadreleased`, `gamepadaxis`, `filedropped`, `threaderror`, `joystickadded`, `joystickremoved`, `focus`, `resize` and `quit`.
 
 `Game:load(args)` runs in this order:
 
@@ -63,12 +64,13 @@ Game({
 2. Sets the window title and graphics defaults, including `setDefaultFilter("nearest", "nearest", 1)` for pixel art.
 3. Builds cursors and calls `cursorManager.new(cursors)`, then `setCursor("default")` if defined.
 4. `inputMap.init(config.input)`, before any scene loads, so prompts can read bindings. In dev, wires the MCP bridge's virtual keys and mouse into `inputMap`.
-5. `sceneManager.addScene` for each constructor, then `setCurrentScene(defaultScene)`.
-6. `postProcessing:load()` and `addShader` for each entry in `shaders`.
-7. If `--export-assets` was passed, runs `AssetExporter.export` and quits before any dev tooling starts.
-8. In dev, starts `hotReload` (stopping music on reload) over the `watch` directories and the MCP bridge on port 12345.
+5. Selects the device backend and applies the `device` config, also before any scene loads, so a scene can ask what the device can do while building its UI. See `device.md`.
+6. `sceneManager.addScene` for each constructor, then `setCurrentScene(defaultScene)`.
+7. `postProcessing:load()` and `addShader` for each entry in `shaders`.
+8. If `--export-assets` was passed, runs `AssetExporter.export` and quits before any dev tooling starts.
+9. In dev, starts `hotReload` (stopping music on reload) over the `watch` directories and the MCP bridge on port 12345.
 
-`Game:update(dt)` polls `inputMap.update(dt)` first, drains the pressed and released lists into `sceneManager.actionPressed`/`actionReleased`, updates post-processing time and the scene, clears `postProcessing.uniforms` and refills it from the current scene's optional `updateShaderUniforms(uniforms, dt)`, then ticks hot reload and the bridge. `Game:draw` wraps `sceneManager.draw()` in `beginCapture`/`endCapture`/`apply`. Raw mouse and key events go to `inputMap` first; a rebind capture in progress consumes them. Click dispatch happens on mouse release of button 1. `Game:focus(false)` calls `inputMap.releaseAll()`; `Game:quit` calls the current scene's optional `onQuit()` inside `pcall`, saves `windowpos.txt` and shuts the bridge down.
+`Game:update(dt)` polls `inputMap.update(dt)` first, drains the pressed and released lists into `sceneManager.actionPressed`/`actionReleased`, pumps `filePicker.update(dt)` and `deviceCamera.update(dt)` so device results and camera frames land before the scene sees them, updates post-processing time and the scene, clears `postProcessing.uniforms` and refills it from the current scene's optional `updateShaderUniforms(uniforms, dt)`, then ticks hot reload and the bridge. `Game:draw` wraps `sceneManager.draw()` in `beginCapture`/`endCapture`/`apply`. Raw mouse and key events go to `inputMap` first; a rebind capture in progress consumes them. Click dispatch happens on mouse release of button 1. `Game:filedropped` offers the drop to the device file picker (a drop can answer an open pick) before the scene's optional `filedropped`, and `Game:threaderror` offers a dead thread to the device modules so a lost worker fails its request instead of hanging. `Game:focus(false)` calls `inputMap.releaseAll()`; `Game:quit` calls the current scene's optional `onQuit()` inside `pcall`, saves `windowpos.txt`, shuts the device subsystems down and stops the bridge. **Its return value matters**: `love.quit` returning truthy aborts the quit, and on the web build `Game:quit` does exactly that, because there a `beforeunload` is the save-flush mechanism rather than a real quit (see `build-and-release.md`). A game that overrides this must return the result.
 
 ## Module reference
 
@@ -82,6 +84,10 @@ Game({
 | `engine/State.lua` | Key/value state container with deep-copied defaults and `reset()`. |
 | `engine/Camera.lua` | Position, zoom, rotation, `set`/`unset` transform, `getBounds` for culling, `followTarget`, `worldToScreen`, `getWorldMousePosition`. |
 | `engine/cacheManager.lua` | Preload and fetch images, spritesheets, sounds, music and fonts by key. Errors on duplicates and misses. |
+| `engine/device/filePicker.lua` | The device's own file picker, delivered as a `love.Image`, raw bytes or a save-directory path. Never throws. See `device.md`. |
+| `engine/device/camera.lua` | The *device* camera (not `engine/Camera.lua`, the 2D viewport): live preview in one reused texture, plus still capture. See `device.md`. |
+| `engine/device/backends/` | One backend per platform. `null.lua` is the contract and the fallback, `mock.lua` the deterministic one the examples use, `desktop.lua` the native dialogs. |
+| `engine/device/threads/` | `love.thread` bodies. `pickerThread.lua` runs the platform file dialog off the main thread so a modal dialog never freezes the window. |
 | `engine/audioManager.lua` | Play one music track and fire-and-forget sounds from the cache. |
 | `engine/cursorManager.lua` | Named cursor registry filled from the `cursors` config. |
 | `engine/PostProcessing.lua` | Ping-pong canvas shader chain with a shared per-frame `uniforms` table and offscreen `process`. |
@@ -102,7 +108,7 @@ Game({
 | `engine/utils/intersection.lua` | `rectangleIntersection(rect1, rect2)`. |
 | `engine/utils/noise.lua` | Pure-maths sample generators for procedural audio: white noise, filters, waveforms, envelope. |
 | `engine/utils/perlin.lua` | `Perlin.noise(x, y)`. |
-| `engine/utils/system.lua` | `isWeb()`: true under love.js. |
+| `engine/utils/system.lua` | `getOS()`, `isWeb()`, `isMobile()`, `isDesktop()`. The only OS branching the engine does; game code should ask a capability instead. |
 | `engine/utils/table.lua` | `getTableSize(t)`, `deepCopy(t)`. |
 | `engine/utils/table_serialize.lua` | `serialize(tbl)` to deterministic Lua source and `deserialize(str)` with an empty environment. Lua 5.1 safe. |
 | `engine/utils/theta.lua` | Theta* grid pathfinding: `lineOfSight`, `findPath(grid, start, goal)`. |
@@ -122,6 +128,8 @@ Game({
 - **Prompt sheet.** `InputPrompt` needs `cacheManager.preloadImage(glyphs.IMAGE_KEY, glyphs.IMAGE_PATH)` in Preload, otherwise prompts fall back to drawn keycaps.
 - **Engine never requires game code.** Inject game data through the config or scene hooks. Game code may require anything under `engine/`.
 - **Save identity.** `conf.lua` sets `t.identity = "newgame"`, which names the save directory used by `saveManager`, `bindings.lua` and `windowpos.txt`.
+- **Device features degrade, never throw.** Gate the file picker and the camera on `isAvailable()` and `getCapabilities()`, never on `love.system.getOS()`: a capability can be false for reasons that have nothing to do with the platform. See `device.md`.
+- **`engine/Camera.lua` is the viewport.** The device camera is `engine/device/camera.lua`, required as `deviceCamera`.
 
 ## State and GameState
 
@@ -198,7 +206,8 @@ To hand loaded data to a fresh scene, `sceneManager.resetScene(name)` returns th
 
 | Preload | Get |
 |---|---|
-| `preloadImage(key, path)` | `getImage(key)` |
+| `preloadImage(key, path)` | `getImage(key)`, `hasImage(key)` |
+| `addImage(key, image)` (an already-built Image, e.g. one the player imported), `replaceImage(key, image)` (overwrites and releases the old one) | `getImage(key)` |
 | `preloadSpritesheet(key, path, frameWidth, frameHeight, keys)` | `getSpritesheet(key)` returns `{ image, quads }`; `getSpritePosition(sourceW, frameW, frameH, index)` |
 | `preloadSound(key, path)` (static) | `getSound(key)` |
 | `preloadMusic(key, path)` (stream) | `getMusic(key)` |

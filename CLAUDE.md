@@ -113,8 +113,9 @@ Game({
 - **Layer names**: `ground`, `entities`, `ui`. `ui` draws in screen space; UI objects default to it.
 - **Input actions**: read input via `inputMap` (`require "engine.input.inputMap"`), never `love.keyboard`/`love.joystick` in game code. `ui_up/ui_down/ui_left/ui_right/ui_accept/ui_cancel` always exist and are locked. Binding shorthand: `key:<scancode>`, `mouse:<n>`, `pad:<button>`, `axis:<axis>+|-`.
 - **Prompt sheet**: `InputPrompt` needs `cacheManager.preloadImage(glyphs.IMAGE_KEY, glyphs.IMAGE_PATH)` in `Preload`; without it prompts fall back to drawn text keycaps.
+- **Device capabilities**: gate the file picker and camera on `isAvailable()`/`getCapabilities()`, never on `love.system.getOS()`. `getState()` returns `"awaitingGesture"` on web, where a browser needs a player tap before it will open a dialog or grant the camera.
 - **Save identity**: `conf.lua` sets `t.identity`, which names the save directory holding `bindings.lua` and `windowpos.txt`.
-- **Quit hook**: `Game:quit` calls `onQuit()` on the current scene if defined. Autosave there.
+- **Quit hook**: `Game:quit` calls `onQuit()` on the current scene if defined. Autosave there. **Its return value matters**: truthy aborts the quit, and on web `Game:quit` returns true because the page's save-flush `beforeunload` would otherwise end the main loop and freeze the game. `love.quit` must pass the return through.
 
 ### Saving
 
