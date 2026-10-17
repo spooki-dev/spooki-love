@@ -1,3 +1,4 @@
+local pixelFormat = require "engine.utils.pixelFormat"
 local sceneManager = require "engine.sceneManager"
 
 --- Renders scenes offscreen at exact pixel sizes and writes them as PNGs.
@@ -55,7 +56,7 @@ function AssetExporter.render(asset, postProcessing)
   if scene.start then scene:start() end
   scene:handleUpdate(0)
 
-  local canvas = love.graphics.newCanvas(asset.width, asset.height)
+  local canvas = pixelFormat.newCanvas(asset.width, asset.height)
   love.graphics.push("all")
   love.graphics.setCanvas(canvas)
   if asset.transparent then
@@ -79,7 +80,7 @@ end
 ---@param canvas love.Canvas
 ---@param path string Absolute or project-relative file path
 local function writePng(canvas, path)
-  local png = canvas:newImageData():encode("png"):getString()
+  local png = pixelFormat.toImageData(canvas):encode("png"):getString()
   local file, err = io.open(path, "wb")
   assert(file, "AssetExporter: cannot open " .. path .. ": " .. tostring(err))
   file:write(png)

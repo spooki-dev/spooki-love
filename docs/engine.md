@@ -56,7 +56,7 @@ Game({
 
 ## What Game.lua does
 
-`engine/Game.lua` is a `classic` class. Its constructor stores the config, grabs the singletons (`sceneManager`, `audioManager`, `cursorManager`, `inputMap` as `inputManager`) and a fresh `PostProcessing()`, then `initializeEvents` defines every `love.*` callback: `load`, `update`, `draw`, `mousepressed`, `mousereleased`, `mousemoved`, `wheelmoved`, `keypressed`, `keyreleased`, `gamepadpressed`, `gamepadreleased`, `gamepadaxis`, `filedropped`, `threaderror`, `joystickadded`, `joystickremoved`, `focus`, `resize` and `quit`.
+`engine/Game.lua` is a `classic` class. Its constructor stores the config, grabs the singletons (`sceneManager`, `audioManager`, `cursorManager`, `inputMap` as `inputManager`) and a fresh `PostProcessing()`, then `initializeEvents` defines every `love.*` callback: `load`, `update`, `draw`, `mousepressed`, `mousereleased`, `mousemoved`, `wheelmoved`, `keypressed`, `keyreleased`, `gamepadpressed`, `gamepadreleased`, `gamepadaxis`, `filedropped`, `directorydropped`, `threaderror`, `joystickadded`, `joystickremoved`, `focus`, `resize` and `quit`.
 
 `Game:load(args)` runs in this order:
 
@@ -70,7 +70,7 @@ Game({
 8. If `--export-assets` was passed, runs `AssetExporter.export` and quits before any dev tooling starts.
 9. In dev, starts `hotReload` (stopping music on reload) over the `watch` directories and the MCP bridge on port 12345.
 
-`Game:update(dt)` polls `inputMap.update(dt)` first, drains the pressed and released lists into `sceneManager.actionPressed`/`actionReleased`, pumps `filePicker.update(dt)` and `deviceCamera.update(dt)` so device results and camera frames land before the scene sees them, updates post-processing time and the scene, clears `postProcessing.uniforms` and refills it from the current scene's optional `updateShaderUniforms(uniforms, dt)`, then ticks hot reload and the bridge. `Game:draw` wraps `sceneManager.draw()` in `beginCapture`/`endCapture`/`apply`. Raw mouse and key events go to `inputMap` first; a rebind capture in progress consumes them. Click dispatch happens on mouse release of button 1. `Game:filedropped` offers the drop to the device file picker (a drop can answer an open pick) before the scene's optional `filedropped`, and `Game:threaderror` offers a dead thread to the device modules so a lost worker fails its request instead of hanging. `Game:focus(false)` calls `inputMap.releaseAll()`; `Game:quit` calls the current scene's optional `onQuit()` inside `pcall`, saves `windowpos.txt`, shuts the device subsystems down and stops the bridge. **Its return value matters**: `love.quit` returning truthy aborts the quit, and on the web build `Game:quit` does exactly that, because there a `beforeunload` is the save-flush mechanism rather than a real quit (see `build-and-release.md`). A game that overrides this must return the result.
+`Game:update(dt)` polls `inputMap.update(dt)` first, drains the pressed and released lists into `sceneManager.actionPressed`/`actionReleased`, pumps `filePicker.update(dt)` and `deviceCamera.update(dt)` so device results and camera frames land before the scene sees them, updates post-processing time and the scene, clears `postProcessing.uniforms` and refills it from the current scene's optional `updateShaderUniforms(uniforms, dt)`, then ticks hot reload and the bridge. `Game:draw` wraps `sceneManager.draw()` in `beginCapture`/`endCapture`/`apply`. Raw mouse and key events go to `inputMap` first; a rebind capture in progress consumes them. Click dispatch happens on mouse release of button 1. `Game:filedropped` offers the drop to the device file picker (a drop can answer an open pick) before the scene's optional `filedropped`, and `Game:threaderror` offers a dead thread to the device modules so a lost worker fails its request instead of hanging. `Game:directorydropped` goes straight to the scene's optional `directorydropped` — the picker deals in files, not folders. `Game:resize` rebuilds the post-processing canvases and then calls the current scene's optional `resize(w, h)`, so a scene laid out against the window can reflow. `Game:focus(false)` calls `inputMap.releaseAll()`; `Game:quit` calls the current scene's optional `onQuit()` inside `pcall`, saves `windowpos.txt`, shuts the device subsystems down and stops the bridge. **Its return value matters**: `love.quit` returning truthy aborts the quit, and on the web build `Game:quit` does exactly that, because there a `beforeunload` is the save-flush mechanism rather than a real quit (see `build-and-release.md`). A game that overrides this must return the result.
 
 ## Module reference
 
@@ -108,6 +108,7 @@ Game({
 | `engine/utils/intersection.lua` | `rectangleIntersection(rect1, rect2)`. |
 | `engine/utils/noise.lua` | Pure-maths sample generators for procedural audio: white noise, filters, waveforms, envelope. |
 | `engine/utils/perlin.lua` | `Perlin.noise(x, y)`. |
+| `engine/utils/pixelFormat.lua` | `best()`, `encodable()`, `newCanvas(w, h)`, `toImageData(canvas)`. The format working canvases are made in, and reading one back safely. See **Pixel formats** below. |
 | `engine/utils/system.lua` | `getOS()`, `isWeb()`, `isMobile()`, `isDesktop()`. The only OS branching the engine does; game code should ask a capability instead. |
 | `engine/utils/table.lua` | `getTableSize(t)`, `deepCopy(t)`. |
 | `engine/utils/table_serialize.lua` | `serialize(tbl)` to deterministic Lua source and `deserialize(str)` with an empty environment. Lua 5.1 safe. |
@@ -129,6 +130,8 @@ Game({
 - **Engine never requires game code.** Inject game data through the config or scene hooks. Game code may require anything under `engine/`.
 - **Save identity.** `conf.lua` sets `t.identity = "newgame"`, which names the save directory used by `saveManager`, `bindings.lua` and `windowpos.txt`.
 - **Device features degrade, never throw.** Gate the file picker and the camera on `isAvailable()` and `getCapabilities()`, never on `love.system.getOS()`: a capability can be false for reasons that have nothing to do with the platform. See `device.md`.
+- **Window hooks are optional scene methods.** `filedropped(file)`, `directorydropped(path)` and `resize(w, h)` run only if the current scene defines them. A dropped file's `getFilename()` is its absolute path.
+- **Canvases you read back go through `pixelFormat`.** `love.graphics.newCanvas` picks a format the web build cannot encode. See **Pixel formats**.
 - **`engine/Camera.lua` is the viewport.** The device camera is `engine/device/camera.lua`, required as `deviceCamera`.
 
 ## State and GameState
@@ -200,6 +203,14 @@ To hand loaded data to a fresh scene, `sceneManager.resetScene(name)` returns th
 
 `postProcessing.uniforms` is one shared table. `Game:update` clears every key each frame and then calls the current scene's `updateShaderUniforms(uniforms, dt)` if it defines one, so switching scenes never leaves stale values behind. Fill it with whatever your `sendUniforms` functions read. No shaders ship with the template.
 
+### Pixel formats
+
+`engine/utils/pixelFormat.lua` exists for the web build. Desktop GL gives `rgba8`, which is what LÖVE's `"normal"` means there, so on desktop this module changes nothing at all. love.js is different: its WebGL context offers no `rgba8` canvas, `"normal"` lands on `rgba4` — four bits a channel — and that bands every blurred gradient. Worse, `ImageData:encode` has no encoder for `rgba4` and does not raise a Lua error when asked for one: it aborts the process, taking the whole game down. `srgba8` is offered instead, so the web build uses that.
+
+`srgba8` costs one wrinkle. The hardware converts between sRGB and linear at the edges of the canvas, encoding what is written and decoding what is read. A chain of passes and the final draw to the screen each do both, so they cancel and the picture is right; but bytes pulled straight back out of the canvas are the encoded ones, lighter than what was drawn. `toImageData(canvas)` draws through a shader that undoes the encode first, so a screenshot or an exported PNG matches what the screen showed.
+
+Use `pixelFormat.newCanvas(w, h)` instead of `love.graphics.newCanvas` anywhere the contents might be read back or chained through shaders, and `pixelFormat.toImageData(canvas)` instead of `canvas:newImageData()`. `PostProcessing` and `AssetExporter` already do. `encodable()` reports whether a read-back can be written to a file at all.
+
 ## Caches, audio and cursors
 
 `engine/cacheManager.lua` stores assets under string keys and errors both on a duplicate preload and on a missing key:
@@ -211,7 +222,7 @@ To hand loaded data to a fresh scene, `sceneManager.resetScene(name)` returns th
 | `preloadSpritesheet(key, path, frameWidth, frameHeight, keys)` | `getSpritesheet(key)` returns `{ image, quads }`; `getSpritePosition(sourceW, frameW, frameH, index)` |
 | `preloadSound(key, path)` (static) | `getSound(key)` |
 | `preloadMusic(key, path)` (stream) | `getMusic(key)` |
-| `preloadFont(key, path, size, hinting)` | `getFont(key)`, `hasFont(key)` |
+| `preloadFont(key, path, size, hinting)` — a `nil` `path` loads LÖVE's built-in font | `getFont(key)`, `hasFont(key)` |
 
 `engine/audioManager.lua` plays from that cache: `playMusic(key, loop)` stops the current track and starts the new one at volume 0.2 (as written, music always loops), `pauseMusic()`, `resumeMusic()`, `stopMusic()`, `setMusicVolume(volume)` on the playing track, `setSoundVolume(volume)` (default 0.5) and `playSound(key)`, which restarts the source. Hot reload calls `stopMusic()`.
 

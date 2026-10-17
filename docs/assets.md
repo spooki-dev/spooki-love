@@ -12,7 +12,7 @@ Every asset the game draws or plays goes through `engine/cacheManager.lua`, keye
 
 | Function | Loads | Notes |
 |---|---|---|
-| `preloadFont(key, path, size, hinting)` | `love.graphics.newFont` | `hinting` is optional (`"normal"`, `"light"`, `"mono"`, `"none"`). `hasFont(key)` checks without erroring. |
+| `preloadFont(key, path, size, hinting)` | `love.graphics.newFont` | A `nil` `path` loads LÖVE's built-in default font. `hinting` is optional (`"normal"`, `"light"`, `"mono"`, `"none"`). `hasFont(key)` checks without erroring. |
 | `preloadImage(key, path)` | `love.graphics.newImage` | Read back with `getImage(key)`. |
 | `preloadSpritesheet(key, path, frameWidth, frameHeight, keys)` | image plus one quad per name in `keys` | `getSpritesheet(key)` returns `{ image, quads }`; frames are indexed left to right, top to bottom. |
 | `preloadSound(key, path)` | `love.audio.newSource(path, "static")` | Short effects, fully decoded. |
