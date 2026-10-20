@@ -158,6 +158,10 @@ function Game:initializeEvents()
     self:filedropped(file)
   end
 
+  function love.directorydropped(path)
+    self:directorydropped(path)
+  end
+
   function love.threaderror(thread, errorstring)
     self:threaderror(thread, errorstring)
   end
@@ -348,6 +352,13 @@ function Game:filedropped(file)
   self.sceneManager.checkAndCallSceneFunction("filedropped", file)
 end
 
+--- A folder was dropped on the window, handed to the current scene's optional
+--- `directorydropped`. The file picker gets no say: it deals in files.
+--- @param path string Absolute path of the dropped directory
+function Game:directorydropped(path)
+  self.sceneManager.checkAndCallSceneFunction("directorydropped", path)
+end
+
 --- A thread died. Offered to the device modules so a dead worker fails the
 --- request it was serving instead of leaving it waiting forever; anything else
 --- is printed, because an unreported thread error is otherwise silent.
@@ -367,8 +378,14 @@ function Game:draw()
   if mcp_bridge then mcp_bridge.captureIfPending() end
 end
 
+--- The window changed size. Post-processing rebuilds its canvases, then the
+--- current scene's optional `resize` runs, so a scene that lays itself out
+--- against the window can reflow.
+--- @param w number New width
+--- @param h number New height
 function Game:resize(w, h)
   self.postProcessing:resize(w, h)
+  self.sceneManager.checkAndCallSceneFunction("resize", w, h)
 end
 
 -- Raw events go to inputMap first (rebind capture, active-device tracking,

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-18
+
+- `engine/utils/pixelFormat.lua`: the format working canvases are made in, and reading one back safely. love.js offers no `rgba8` canvas, so LÖVE's `"normal"` lands on `rgba4` there, which bands every blurred gradient — and `ImageData:encode` has no encoder for it, which does not raise a Lua error but aborts the process and takes the game down with it. `newCanvas` picks `rgba8`, then `srgba8`, then `normal`; `toImageData` undoes the sRGB encode the hardware applies on write, so a read-back matches what was drawn. On desktop `"normal"` already is `rgba8`, so nothing changes there. `PostProcessing` and `AssetExporter` now go through it — `AssetExporter` encodes a canvas to PNG, which is exactly the call that aborts.
+- `cacheManager.preloadFont(key, nil, size, hinting)` loads LÖVE's built-in font. A game that has not chosen a typeface yet, or only wants one for debug text, no longer needs a .ttf in the repo to satisfy the four font-key contracts.
+- `love.directorydropped` is forwarded to the current scene's optional `directorydropped(path)`, matching `filedropped`. `Game:initializeEvents` owns every `love.*` callback, so a game could not otherwise take this one without fighting the engine for it.
+- `Game:resize` now calls the current scene's optional `resize(w, h)` after resizing the post-processing canvases. Scenes that lay themselves out against the window had no way to hear about it.
+
 ## 2026-10-17 (device file picker and camera)
 
 - `engine/device/`: one API for two things stock LÖVE cannot do on any platform. `filePicker.open(opts, callback)` shows the device's own picker and delivers the chosen file as a drawable `love.Image`, as raw bytes, or written into the save directory, because different games want different things; `engine/device/camera.lua` (required as `deviceCamera`, never `camera` — `engine/Camera.lua` is the 2D viewport) streams the device camera into one reused texture and takes stills. Both follow `saveManager`'s posture: a missing picker, a denied camera or a corrupt file arrive through the callback, never as an error. See `docs/device.md`.
